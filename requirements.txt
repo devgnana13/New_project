@@ -1,0 +1,15 @@
+kiteconnect==5.0.1
+flask==3.0.0
+flask-cors==4.0.0
+flask-limiter==3.5.0
+flask-caching==2.1.0
+pymongo==4.6.1
+gunicorn==21.2.0
+python-dotenv==1.0.0
+numpy==1.26.0
+scipy==1.11.0
+APScheduler==3.10.4
+pytest==8.3.0
+pyOpenSSL>=25.0.0
+dnspython>=2.4.0
+certifi>=2024.0.0

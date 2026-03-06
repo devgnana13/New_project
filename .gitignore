@@ -1,0 +1,31 @@
+# Environment & Secrets
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+dist/
+build/
+venv/
+.venv/
+
+# Testing
+.pytest_cache/
+htmlcov/
+
+# Logs
+logs.txt
+*.log
+
+# Cache
+cache/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/

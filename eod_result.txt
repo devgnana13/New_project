@@ -1,0 +1,6 @@
+Deleted old EOD records: 0 (kept 2026-03-05)
+Deleted old alert records: 0 (kept 2026-03-05)
+EOD dates remaining: ['2026-03-05']
+Alert dates remaining: ['2026-03-05']
+EOD symbols for today: 151
+Alerts for today: 23

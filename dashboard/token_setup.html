@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kite Token Setup — Options Analytics</title>
+
+    <!-- Modern Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        :root {
+            --bg-primary: #0b1120;
+            --bg-card: #1e293b;
+            --bg-card-hover: #253449;
+            --border-color: rgba(100, 116, 139, 0.3);
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --accent-indigo: #818cf8;
+            --accent-cyan: #22d3ee;
+            --accent-emerald: #34d399;
+            --accent-rose: #fb7185;
+            --accent-amber: #fbbf24;
+            --gradient-start: #818cf8;
+            --gradient-end: #22d3ee;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        /* Animated gradient background */
+        body::before {
+            content: '';
+            position: fixed;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(ellipse at 30% 50%, rgba(99, 102, 241, 0.08) 0%, transparent 60%),
+                radial-gradient(ellipse at 70% 20%, rgba(34, 211, 238, 0.06) 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 80%, rgba(251, 113, 133, 0.04) 0%, transparent 50%);
+            animation: bgFloat 20s ease-in-out infinite alternate;
+            z-index: 0;
+        }
+
+        @keyframes bgFloat {
+            0% {
+                transform: translate(0, 0) rotate(0deg);
+            }
+
+            100% {
+                transform: translate(30px, -20px) rotate(3deg);
+            }
+        }
+
+        .container {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            max-width: 520px;
+            padding: 20px;
+        }
+
+        /* Main Card */
+        .setup-card {
+            background: linear-gradient(135deg, rgba(30, 41, 59, 0.95), rgba(30, 41, 59, 0.85));
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 40px;
+            backdrop-filter: blur(20px);
+            box-shadow:
+                0 0 0 1px rgba(255, 255, 255, 0.05),
+                0 25px 50px -12px rgba(0, 0, 0, 0.6),
+                0 0 80px rgba(99, 102, 241, 0.08);
+            animation: cardEntry 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes cardEntry {
+            from {
+                opacity: 0;
+                transform: translateY(30px) scale(0.96);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        /* Logo / Icon */
+        .logo-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 28px;
+        }
+
+        .logo-icon {
+            width: 56px;
+            height: 56px;
+            border-radius: 16px;
+            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 8px 30px rgba(99, 102, 241, 0.3);
+            animation: logoPulse 3s ease-in-out infinite;
+        }
+
+        @keyframes logoPulse {
+
+            0%,
+            100% {
+                box-shadow: 0 8px 30px rgba(99, 102, 241, 0.3);
+            }
+
+            50% {
+                box-shadow: 0 8px 40px rgba(99, 102, 241, 0.5);
+            }
+        }
+
+        .logo-icon svg {
+            width: 28px;
+            height: 28px;
+            color: white;
+        }
+
+        /* Title */
+        .title {
+            text-align: center;
+            font-size: 22px;
+            font-weight: 800;
+            margin-bottom: 6px;
+            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .subtitle {
+            text-align: center;
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-bottom: 32px;
+            line-height: 1.5;
+        }
+
+        /* Status Badge */
+        .status-badge {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 10px 16px;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 24px;
+            transition: all 0.3s ease;
+        }
+
+        .status-badge.no-token {
+            background: rgba(251, 191, 36, 0.1);
+            border: 1px solid rgba(251, 191, 36, 0.25);
+            color: var(--accent-amber);
+        }
+
+        .status-badge.has-token {
+            background: rgba(52, 211, 153, 0.1);
+            border: 1px solid rgba(52, 211, 153, 0.25);
+            color: var(--accent-emerald);
+        }
+
+        .status-badge.error {
+            background: rgba(251, 113, 133, 0.1);
+            border: 1px solid rgba(251, 113, 133, 0.25);
+            color: var(--accent-rose);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            animation: dotPulse 2s ease-in-out infinite;
+        }
+
+        .no-token .status-dot {
+            background: var(--accent-amber);
+        }
+
+        .has-token .status-dot {
+            background: var(--accent-emerald);
+        }
+
+        .error .status-dot {
+            background: var(--accent-rose);
+            animation: none;
+        }
+
+        @keyframes dotPulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.4;
+            }
+        }
+
+        /* Steps */
+        .steps {
+            margin-bottom: 24px;
+        }
+
+        .step {
+            display: flex;
+            align-items: flex-start;
+            gap: 14px;
+            padding: 12px 0;
+        }
+
+        .step+.step {
+            border-top: 1px solid rgba(100, 116, 139, 0.15);
+        }
+
+        .step-number {
+            width: 28px;
+            height: 28px;
+            min-width: 28px;
+            border-radius: 8px;
+            background: rgba(99, 102, 241, 0.15);
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--accent-indigo);
+        }
+
+        .step-text {
+            font-size: 13px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        .step-text strong {
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        /* Open Kite Login Button */
+        .btn-kite-login {
+            width: 100%;
+            padding: 14px 24px;
+            border: none;
+            border-radius: 12px;
+            font-family: 'Inter', sans-serif;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            background: linear-gradient(135deg, #e65100, #ff6d00);
+            color: white;
+            margin-bottom: 16px;
+            text-decoration: none;
+            box-shadow: 0 4px 15px rgba(230, 81, 0, 0.3);
+        }
+
+        .btn-kite-login:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(230, 81, 0, 0.4);
+        }
+
+        .btn-kite-login:active {
+            transform: translateY(0);
+        }
+
+        .btn-kite-login svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        /* Input Field */
+        .input-group {
+            margin-bottom: 16px;
+        }
+
+        .input-label {
+            display: block;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .token-input {
+            width: 100%;
+            padding: 14px 16px;
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            color: var(--text-primary);
+            font-family: 'Fira Code', 'Consolas', monospace;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            outline: none;
+        }
+
+        .token-input::placeholder {
+            color: var(--text-muted);
+            font-family: 'Inter', sans-serif;
+        }
+
+        .token-input:focus {
+            border-color: var(--accent-indigo);
+            box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.1);
+        }
+
+        /* Submit Button */
+        .btn-submit {
+            width: 100%;
+            padding: 14px 24px;
+            border: none;
+            border-radius: 12px;
+            font-family: 'Inter', sans-serif;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+            color: white;
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+        }
+
+        .btn-submit:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(99, 102, 241, 0.4);
+        }
+
+        .btn-submit:active:not(:disabled) {
+            transform: translateY(0);
+        }
+
+        .btn-submit:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-submit svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        /* Spinner */
+        .spinner {
+            width: 18px;
+            height: 18px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top: 2px solid white;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Success redirect panel */
+        .success-panel {
+            text-align: center;
+            padding: 20px 0;
+            animation: fadeIn 0.5s ease;
+        }
+
+        .success-panel .checkmark {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            background: rgba(52, 211, 153, 0.15);
+            border: 2px solid var(--accent-emerald);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 16px;
+            animation: scaleIn 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes scaleIn {
+            from {
+                transform: scale(0);
+            }
+
+            to {
+                transform: scale(1);
+            }
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        .success-panel .checkmark svg {
+            width: 32px;
+            height: 32px;
+            color: var(--accent-emerald);
+        }
+
+        .success-panel .msg {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--accent-emerald);
+            margin-bottom: 6px;
+        }
+
+        .success-panel .sub {
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        /* Help text */
+        .help-text {
+            text-align: center;
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 20px;
+            line-height: 1.6;
+        }
+
+        .help-text a {
+            color: var(--accent-indigo);
+            text-decoration: none;
+        }
+
+        .help-text a:hover {
+            text-decoration: underline;
+        }
+
+        /* Error message */
+        .error-message {
+            background: rgba(251, 113, 133, 0.1);
+            border: 1px solid rgba(251, 113, 133, 0.25);
+            border-radius: 10px;
+            padding: 12px 16px;
+            font-size: 12px;
+            color: var(--accent-rose);
+            margin-bottom: 16px;
+            display: none;
+            line-height: 1.5;
+        }
+
+        /* Scrollbar styling */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="setup-card">
+            <!-- Logo -->
+            <div class="logo-container">
+                <div class="logo-icon">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                    </svg>
+                </div>
+            </div>
+
+            <!-- Title -->
+            <h1 class="title">Kite Access Token Setup</h1>
+            <p class="subtitle">Connect your Zerodha Kite account to start receiving live market data</p>
+
+            <!-- Status Badge -->
+            <div id="statusBadge" class="status-badge no-token">
+                <span class="status-dot"></span>
+                <span id="statusText">Checking token status...</span>
+            </div>
+
+            <!-- Content changes based on state -->
+            <div id="setupContent">
+                <!-- Steps -->
+                <div class="steps">
+                    <div class="step">
+                        <span class="step-number">1</span>
+                        <span class="step-text"><strong>Open Kite Login</strong> — Click the button below to open the Zerodha login page</span>
+                    </div>
+                    <div class="step">
+                        <span class="step-number">2</span>
+                        <span class="step-text"><strong>Login & Authorize</strong> — Enter your Zerodha credentials and authorize the app</span>
+                    </div>
+                    <div class="step">
+                        <span class="step-number">3</span>
+                        <span class="step-text"><strong>Copy Request Token</strong> — From the redirect URL, copy the <strong>request_token</strong> parameter value</span>
+                    </div>
+                </div>
+
+                <!-- Open Kite Login Button -->
+                <a id="kiteLoginBtn" href="#" target="_blank" class="btn-kite-login" onclick="openKiteLogin()">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                    </svg>
+                    Open Kite Login Page
+                </a>
+
+                <!-- Error Message -->
+                <div id="errorMessage" class="error-message"></div>
+
+                <!-- Request Token Input -->
+                <div class="input-group">
+                    <label class="input-label" for="requestTokenInput">Paste Request Token</label>
+                    <input type="text" id="requestTokenInput" class="token-input"
+                        placeholder="e.g. lg38HRRT7GkPaZnY8t3Q6VgsXVENIFpZ"
+                        autocomplete="off" spellcheck="false">
+                </div>
+
+                <!-- Submit Button -->
+                <button id="submitBtn" class="btn-submit" onclick="submitRequestToken()">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                    </svg>
+                    Generate Access Token
+                </button>
+            </div>
+
+            <!-- Success Panel (hidden by default) -->
+            <div id="successPanel" style="display: none;">
+                <div class="success-panel">
+                    <div class="checkmark">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
+                                d="M5 13l4 4L19 7" />
+                        </svg>
+                    </div>
+                    <div class="msg">Token Active!</div>
+                    <div class="sub">Access token is valid for today. Redirecting to dashboard...</div>
+                </div>
+            </div>
+
+            <div class="help-text">
+                Token refreshes daily at market open. You'll need to re-authenticate once per day.<br>
+                Having trouble? Check if your <a href="#">API key</a> is correct.
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = window.location.origin + '/api';
+
+        // On page load, check if a valid token already exists
+        window.addEventListener('DOMContentLoaded', async () => {
+            try {
+                const res = await fetch(`${API_BASE}/token/status`);
+                const data = await res.json();
+
+                if (data.has_valid_token) {
+                    showTokenActive();
+                    // Redirect to dashboard after a short delay
+                    setTimeout(() => {
+                        window.location.href = '/';
+                    }, 1500);
+                } else {
+                    updateStatus('no-token', 'No valid token for today — please authenticate');
+                }
+
+                // Set the login URL
+                if (data.login_url) {
+                    document.getElementById('kiteLoginBtn').href = data.login_url;
+                }
+            } catch (err) {
+                updateStatus('error', 'Cannot reach server — is the app running?');
+                console.error('Status check failed:', err);
+            }
+        });
+
+        function openKiteLogin() {
+            // The href will handle opening in a new tab
+            // Just provide visual feedback
+            const btn = document.getElementById('kiteLoginBtn');
+            btn.style.boxShadow = '0 0 30px rgba(230, 81, 0, 0.5)';
+            setTimeout(() => {
+                btn.style.boxShadow = '0 4px 15px rgba(230, 81, 0, 0.3)';
+            }, 1000);
+        }
+
+        async function submitRequestToken() {
+            const input = document.getElementById('requestTokenInput');
+            const btn = document.getElementById('submitBtn');
+            const errorDiv = document.getElementById('errorMessage');
+            const requestToken = input.value.trim();
+
+            // Validate
+            if (!requestToken) {
+                showError('Please paste the request token from the redirect URL.');
+                input.focus();
+                return;
+            }
+
+            // Show loading state
+            btn.disabled = true;
+            btn.innerHTML = '<div class="spinner"></div> Generating...';
+            errorDiv.style.display = 'none';
+
+            try {
+                const res = await fetch(`${API_BASE}/token/generate`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ request_token: requestToken }),
+                });
+
+                const data = await res.json();
+
+                if (data.success) {
+                    showTokenActive();
+                    // Redirect to dashboard after 2 seconds
+                    setTimeout(() => {
+                        window.location.href = '/';
+                    }, 2000);
+                } else {
+                    showError(data.error || 'Failed to generate access token. Please try again with a fresh request token.');
+                    resetButton();
+                }
+            } catch (err) {
+                showError('Network error — ensure the server is running.');
+                resetButton();
+                console.error('Token generation failed:', err);
+            }
+        }
+
+        function showTokenActive() {
+            updateStatus('has-token', 'Access token is active and valid for today');
+            document.getElementById('setupContent').style.display = 'none';
+            document.getElementById('successPanel').style.display = 'block';
+        }
+
+        function showError(message) {
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.textContent = '⚠️ ' + message;
+            errorDiv.style.display = 'block';
+        }
+
+        function resetButton() {
+            const btn = document.getElementById('submitBtn');
+            btn.disabled = false;
+            btn.innerHTML = `
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="18" height="18">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                </svg>
+                Generate Access Token
+            `;
+        }
+
+        function updateStatus(type, text) {
+            const badge = document.getElementById('statusBadge');
+            const statusText = document.getElementById('statusText');
+
+            badge.className = 'status-badge ' + type;
+            statusText.textContent = text;
+        }
+
+        // Allow Enter key to submit
+        document.getElementById('requestTokenInput').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                submitRequestToken();
+            }
+        });
+    </script>
+</body>
+
+</html>

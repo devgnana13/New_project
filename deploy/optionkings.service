@@ -1,0 +1,27 @@
+[Unit]
+Description=Options Analytics Platform (optionkings.in)
+After=network.target
+
+[Service]
+Type=simple
+User=optionkings
+Group=optionkings
+WorkingDirectory=/home/optionkings/app
+EnvironmentFile=/home/optionkings/app/.env
+ExecStart=/home/optionkings/app/venv/bin/python main.py
+Restart=always
+RestartSec=10
+
+# Logging
+StandardOutput=append:/home/optionkings/app/logs.txt
+StandardError=append:/home/optionkings/app/logs.txt
+
+# Security
+NoNewPrivileges=true
+PrivateTmp=true
+
+# Resource limits
+LimitNOFILE=65535
+
+[Install]
+WantedBy=multi-user.target
