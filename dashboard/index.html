@@ -41,38 +41,70 @@
             font-variant-numeric: tabular-nums;
         }
 
-        /* Pulse animation for alert rows */
+        /* Pulse animation for alert rows — strong visibility */
         .alert-row {
             animation: alertPulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-            border-left: 4px solid theme('colors.red.500');
+            border-left: 4px solid #ef4444;
         }
 
         @keyframes alertPulse {
 
             0%,
             100% {
-                background-color: rgba(239, 68, 68, 0.05);
+                background-color: rgba(239, 68, 68, 0.10);
             }
 
             50% {
-                background-color: rgba(239, 68, 68, 0.2);
+                background-color: rgba(239, 68, 68, 0.25);
+            }
+        }
+
+        /* Alert icon glow */
+        .glow-green {
+            text-shadow: 0 0 6px rgba(52, 211, 153, 0.8);
+        }
+
+        .glow-red {
+            text-shadow: 0 0 6px rgba(251, 113, 133, 0.8);
+        }
+
+        .glow-yellow {
+            text-shadow: 0 0 6px rgba(251, 191, 36, 0.8);
+            animation: yellowPulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes yellowPulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
             }
         }
 
         /* Subtle transitions */
         tbody tr {
-            transition: background-color 0.2s ease, border-left 0.2s ease;
-            border-left: 4px solid transparent;
+            transition: background-color 0.15s ease;
+            border-left: 3px solid transparent;
         }
 
         tbody tr:hover {
-            background-color: rgba(255, 255, 255, 0.05);
+            background-color: rgba(255, 255, 255, 0.04);
+        }
+
+        /* Compact table */
+        table {
+            table-layout: fixed;
+            width: 100%;
         }
 
         /* Scrollbar styling */
         ::-webkit-scrollbar {
-            width: 8px;
-            height: 8px;
+            width: 6px;
+            height: 6px;
         }
 
         ::-webkit-scrollbar-track {
@@ -81,7 +113,7 @@
 
         ::-webkit-scrollbar-thumb {
             background: #334155;
-            border-radius: 4px;
+            border-radius: 3px;
         }
 
         ::-webkit-scrollbar-thumb:hover {
@@ -93,107 +125,95 @@
 <body class="antialiased h-screen flex flex-col overflow-hidden">
 
     <!-- Header -->
-    <header class="bg-card border-b border-slate-700/50 py-4 px-6 flex items-center justify-between shrink-0">
-        <div class="flex items-center space-x-3">
+    <header class="bg-card border-b border-slate-700/50 py-2 px-4 flex items-center justify-between shrink-0">
+        <div class="flex items-center space-x-2">
             <div
-                class="h-8 w-8 rounded-lg bg-indigo-500/20 flex items-center justify-center border border-indigo-500/30">
-                <svg class="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                class="h-7 w-7 rounded-lg bg-indigo-500/20 flex items-center justify-center border border-indigo-500/30">
+                <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                 </svg>
             </div>
-            <h1 class="text-xl font-bold bg-gradient-to-r from-indigo-400 to-cyan-400 bg-clip-text text-transparent">
+            <h1 class="text-base font-bold bg-gradient-to-r from-indigo-400 to-cyan-400 bg-clip-text text-transparent">
                 Options Live Analytics
             </h1>
         </div>
 
-        <div class="flex items-center space-x-6">
-            <div class="text-sm font-medium text-slate-400 flex items-center">
-                <span class="relative flex h-3 w-3 mr-2">
+        <div class="flex items-center space-x-4">
+            <div class="text-xs font-medium text-slate-400 flex items-center">
+                <span class="relative flex h-2 w-2 mr-1.5">
                     <span
                         class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                    <span class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+                    <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
                 </span>
-                LIVE <span id="clock" class="ml-2 tabular-data">--:--:--</span>
+                LIVE <span id="clock" class="ml-1.5 tabular-data">--:--:--</span>
             </div>
         </div>
     </header>
 
     <!-- Main Content -->
-    <main class="flex-1 overflow-auto p-6">
-        <div class="max-w-7xl mx-auto space-y-6">
+    <main class="flex-1 overflow-auto p-3">
+        <div class="max-w-full mx-auto space-y-3">
 
-            <!-- Stats overview cards -->
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div class="bg-card rounded-xl p-5 border border-slate-700/50 shadow-lg shadow-black/20">
-                    <div class="text-sm text-slate-400 font-medium mb-1">Total Monitored</div>
-                    <div class="text-2xl font-bold tabular-data" id="stat-total">0</div>
+            <!-- Stats overview cards - compact, no gaps -->
+            <div class="grid grid-cols-5 gap-2">
+                <div class="bg-card rounded-lg p-3 border border-slate-700/50">
+                    <div class="text-[10px] text-slate-400 font-medium uppercase tracking-wide">Monitored</div>
+                    <div class="text-lg font-bold tabular-data" id="stat-total">0</div>
                 </div>
-                <div class="bg-card rounded-xl p-5 border border-slate-700/50 shadow-lg shadow-black/20">
-                    <div class="text-sm text-slate-400 font-medium mb-1">Total Calls Volume</div>
-                    <div class="text-2xl font-bold tabular-data text-emerald-400" id="stat-calls">0</div>
+                <div class="bg-card rounded-lg p-3 border border-slate-700/50">
+                    <div class="text-[10px] text-slate-400 font-medium uppercase tracking-wide">Total Calls</div>
+                    <div class="text-lg font-bold tabular-data text-emerald-400" id="stat-calls">0</div>
                 </div>
-                <div class="bg-card rounded-xl p-5 border border-slate-700/50 shadow-lg shadow-black/20">
-                    <div class="text-sm text-slate-400 font-medium mb-1">Total Puts Volume</div>
-                    <div class="text-2xl font-bold tabular-data text-rose-400" id="stat-puts">0</div>
+                <div class="bg-card rounded-lg p-3 border border-slate-700/50">
+                    <div class="text-[10px] text-slate-400 font-medium uppercase tracking-wide">Total Puts</div>
+                    <div class="text-lg font-bold tabular-data text-rose-400" id="stat-puts">0</div>
                 </div>
-                <div class="bg-card rounded-xl p-5 border border-slate-700/50 shadow-lg shadow-black/20">
-                    <div class="text-sm text-slate-400 font-medium mb-1">Alerts Today</div>
-                    <div class="text-2xl font-bold tabular-data text-amber-400" id="stat-alerts">0</div>
+                <div class="bg-card rounded-lg p-3 border border-slate-700/50">
+                    <div class="text-[10px] text-slate-400 font-medium uppercase tracking-wide">Alerts</div>
+                    <div class="text-lg font-bold tabular-data text-amber-400" id="stat-alerts">0</div>
+                </div>
+                <div class="bg-card rounded-lg p-3 border border-slate-700/50">
+                    <div class="text-[10px] text-slate-400 font-medium uppercase tracking-wide">Put &gt; Call</div>
+                    <div class="text-lg font-bold tabular-data text-yellow-400" id="stat-put-alerts">0</div>
                 </div>
             </div>
 
             <!-- Table Container -->
-            <div class="bg-card rounded-xl border border-slate-700/50 shadow-xl overflow-hidden flex flex-col">
-                <div class="px-6 py-4 border-b border-slate-700/50 flex justify-between items-center bg-slate-800/50">
-                    <h2 class="text-lg font-semibold text-white flex items-center">
-                        <svg class="w-5 h-5 mr-2 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                        </svg>
-                        Live EOD Totals (ATM ±10)
-                    </h2>
-
+            <div class="bg-card rounded-lg border border-slate-700/50 overflow-hidden flex flex-col">
+                <div class="px-3 py-2 border-b border-slate-700/50 flex justify-between items-center bg-slate-800/50">
+                    <h2 class="text-sm font-semibold text-white">Live EOD Totals (ATM ±10)</h2>
                     <div class="relative">
-                        <svg class="w-4 h-4 absolute left-3 top-2.5 text-slate-400" fill="none" stroke="currentColor"
-                            viewBox="0 0 24 24">
+                        <svg class="w-3.5 h-3.5 absolute left-2.5 top-2 text-slate-400" fill="none"
+                            stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                         </svg>
-                        <input type="text" id="searchInput" placeholder="Search symbol..."
-                            class="bg-slate-900 border border-slate-700 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block w-full pl-9 p-2 text-white placeholder-slate-400">
+                        <input type="text" id="searchInput" placeholder="Search..."
+                            class="bg-slate-900 border border-slate-700 text-xs rounded-md focus:ring-indigo-500 focus:border-indigo-500 block w-40 pl-7 py-1.5 pr-2 text-white placeholder-slate-500">
                     </div>
                 </div>
 
                 <div class="overflow-x-auto">
-                    <table class="w-full text-left text-sm whitespace-nowrap">
+                    <table class="w-full text-left text-xs whitespace-nowrap">
                         <thead class="text-xs text-slate-400 uppercase bg-slate-800/80 sticky top-0 z-10">
                             <tr>
-                                <th scope="col" class="px-6 py-3 font-semibold cursor-pointer hover:text-white"
-                                    onclick="sortTable('symbol')">Stock <span class="text-slate-500 ml-1">↓</span></th>
-                                <th scope="col" class="px-6 py-3 font-semibold text-right text-slate-400">Prev Day Calls
-                                </th>
-                                <th scope="col"
-                                    class="px-6 py-3 font-semibold text-right cursor-pointer hover:text-white"
-                                    onclick="sortTable('call_volume')">Live Calls <span
-                                        class="text-slate-500 ml-1">↕</span></th>
-                                <th scope="col" class="px-6 py-3 font-semibold text-right text-slate-400">Prev Day Puts
-                                </th>
-                                <th scope="col"
-                                    class="px-6 py-3 font-semibold text-right cursor-pointer hover:text-white"
-                                    onclick="sortTable('put_volume')">Live Puts <span
-                                        class="text-slate-500 ml-1">↕</span></th>
-                                <th scope="col"
-                                    class="px-6 py-3 font-semibold text-right cursor-pointer hover:text-white"
-                                    onclick="sortTable('alert')">Alert Status <span class="text-slate-500 ml-1">↕</span>
-                                </th>
+                                <th class="px-3 py-2 font-semibold cursor-pointer hover:text-white"
+                                    onclick="sortTable('symbol')">Stock ↓</th>
+                                <th class="px-2 py-2 font-semibold text-right">Prev CE</th>
+                                <th class="px-2 py-2 font-semibold text-right cursor-pointer hover:text-white"
+                                    onclick="sortTable('call_volume')">Live CE ↕</th>
+                                <th class="px-2 py-2 font-semibold text-right">Prev PE</th>
+                                <th class="px-2 py-2 font-semibold text-right cursor-pointer hover:text-white"
+                                    onclick="sortTable('put_volume')">Live PE ↕</th>
+                                <th class="px-2 py-2 font-semibold text-center cursor-pointer hover:text-white"
+                                    onclick="sortTable('alert')" title="CE 2x | PE 2x | Put>Call">Alerts ↕</th>
                             </tr>
                         </thead>
                         <tbody id="dataTableBody" class="divide-y divide-slate-800/50">
-                            <!-- Rows will be populated by JS -->
                             <tr>
-                                <td colspan="4" class="px-6 py-10 text-center text-slate-500">
-                                    <svg class="animate-spin h-8 w-8 mx-auto text-indigo-500 mb-3"
+                                <td colspan="6" class="px-3 py-8 text-center text-slate-500">
+                                    <svg class="animate-spin h-6 w-6 mx-auto text-indigo-500 mb-2"
                                         xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
                                             stroke-width="4"></circle>
@@ -213,18 +233,17 @@
     </main>
 
     <script>
-        // API Base configuration — works on both localhost and production domain
+        // API Base configuration
         const API_BASE = window.location.origin + '/api';
 
         // Application State
         let liveVolumes = [];
-        let alertsMap = new Map(); // Key: Symbol, Value: Alert message
-        let eodVolumesMap = new Map(); // Key: Symbol, Value: {call_volume_total, put_volume_total}
+        let alertsMap = new Map();
+        let eodVolumesMap = new Map();
         let eodLoaded = false;
         let sortColumn = 'symbol';
         let sortAsc = true;
 
-        // Format numbers visually (1,500,000)
         const formatNum = (num) => new Intl.NumberFormat('en-IN').format(num || 0);
 
         // Update live clock
@@ -239,7 +258,6 @@
                 sortAsc = !sortAsc;
             } else {
                 sortColumn = col;
-                // Defaults: string goes desc first for some reason? Let's make text asc default, numbers desc default
                 sortAsc = col === 'symbol' ? true : false;
             }
             renderTable();
@@ -254,10 +272,8 @@
                 if (sortColumn === 'symbol') {
                     const aIsIndex = INDICES.includes(a.symbol);
                     const bIsIndex = INDICES.includes(b.symbol);
-
                     if (aIsIndex && !bIsIndex) return sortAsc ? -1 : 1;
                     if (!aIsIndex && bIsIndex) return sortAsc ? 1 : -1;
-
                     valA = a.symbol;
                     valB = b.symbol;
                 } else if (sortColumn === 'call_volume') {
@@ -267,8 +283,11 @@
                     valA = a.put_volume;
                     valB = b.put_volume;
                 } else if (sortColumn === 'alert') {
-                    valA = alertsMap.has(a.symbol) ? 1 : 0;
-                    valB = alertsMap.has(b.symbol) ? 1 : 0;
+                    // Score: count how many alert indicators are active
+                    const aAlerts = alertsMap.get(a.symbol) || "";
+                    const bAlerts = alertsMap.get(b.symbol) || "";
+                    valA = (aAlerts.includes("CALL") ? 1 : 0) + (aAlerts.includes("PUT") ? 1 : 0) + (a.put_volume > a.call_volume ? 1 : 0);
+                    valB = (bAlerts.includes("CALL") ? 1 : 0) + (bAlerts.includes("PUT") ? 1 : 0) + (b.put_volume > b.call_volume ? 1 : 0);
                 }
 
                 if (valA < valB) return sortAsc ? -1 : 1;
@@ -280,7 +299,6 @@
         // Fetch Data from Server
         async function fetchAnalytics() {
             try {
-                // Fetch EOD Data once
                 if (!eodLoaded) {
                     try {
                         const eodRes = await fetch(`${API_BASE}/eod-volumes`);
@@ -301,7 +319,6 @@
                     }
                 }
 
-                // Fetch both concurrently
                 const [volRes, alertRes] = await Promise.all([
                     fetch(`${API_BASE}/live-volumes`),
                     fetch(`${API_BASE}/alerts`)
@@ -312,12 +329,9 @@
                 const volData = await volRes.json();
                 const alertData = alertRes.ok ? await alertRes.json() : { data: [] };
 
-                // Map alerts for quick lookup
                 alertsMap.clear();
                 if (alertData.data) {
                     alertData.data.forEach(alert => {
-                        // Store the most recent alert for a symbol, or join messages
-                        // We use the alert message to display on the table
                         let existing = alertsMap.get(alert.symbol);
                         if (existing) {
                             if (!existing.includes(alert.alert_type)) {
@@ -331,7 +345,6 @@
 
                 document.getElementById('stat-alerts').textContent = alertData.count || 0;
 
-                // Process volumes dict to array
                 let sumCalls = 0;
                 let sumPuts = 0;
                 const vols = volData.data || {};
@@ -350,10 +363,12 @@
 
                 liveVolumes = newLiveVolumes;
 
-                // Update global stats
+                const putDominantCount = liveVolumes.filter(v => v.put_volume > v.call_volume).length;
+
                 document.getElementById('stat-total').textContent = liveVolumes.length;
                 document.getElementById('stat-calls').textContent = formatNum(sumCalls);
                 document.getElementById('stat-puts').textContent = formatNum(sumPuts);
+                document.getElementById('stat-put-alerts').textContent = putDominantCount;
 
                 renderTable();
 
@@ -362,8 +377,8 @@
                 if (liveVolumes.length === 0) {
                     document.getElementById('dataTableBody').innerHTML = `
                         <tr>
-                            <td colspan="4" class="px-6 py-6 text-center text-red-500">
-                                ⚠️ Failed to connect to local server at ${API_BASE}. Make sure the Flask app is running.
+                            <td colspan="6" class="px-3 py-6 text-center text-red-500 text-xs">
+                                ⚠️ Failed to connect to server at ${API_BASE}
                             </td>
                         </tr>
                     `;
@@ -376,60 +391,46 @@
             const tbody = document.getElementById('dataTableBody');
             const searchStr = document.getElementById('searchInput').value.toLowerCase();
 
-            // Filter
             let displayData = liveVolumes.filter(item =>
                 item.symbol.toLowerCase().includes(searchStr)
             );
 
-            // Sort
             displayData = sortData(displayData);
 
             if (displayData.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="4" class="px-6 py-8 text-center text-slate-500">No matching stocks found.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="6" class="px-3 py-6 text-center text-slate-500 text-xs">No matching stocks found.</td></tr>`;
                 return;
             }
 
-            // Build HTML
             let html = '';
             for (const row of displayData) {
                 const alertTypes = alertsMap.get(row.symbol) || "";
                 const isAlert = alertsMap.has(row.symbol);
                 const hasCallSpike = alertTypes.includes("CALL");
                 const hasPutSpike = alertTypes.includes("PUT");
+                const putGtCall = row.put_volume > row.call_volume;
 
-                const rowClass = isAlert ? 'bg-slate-800/80 alert-row' : '';
+                const rowClass = (isAlert || putGtCall) ? 'alert-row' : '';
 
                 const eod = eodVolumesMap.get(row.symbol) || { call: 0, put: 0 };
 
-                const callBadge = hasCallSpike ? `<span class="ml-2 inline-flex items-center rounded bg-emerald-400/20 px-1.5 py-0.5 text-[10px] font-bold text-emerald-400 border border-emerald-400/30 shadow-[0_0_8px_rgba(52,211,153,0.3)] animate-pulse">2x SPIKE</span>` : '';
-                const putBadge = hasPutSpike ? `<span class="ml-2 inline-flex items-center rounded bg-rose-400/20 px-1.5 py-0.5 text-[10px] font-bold text-rose-400 border border-rose-400/30 shadow-[0_0_8px_rgba(251,113,133,0.3)] animate-pulse">2x SPIKE</span>` : '';
-
-                const alertMsg = isAlert
-                    ? `<span class="inline-flex items-center rounded-md bg-amber-400/10 px-2.5 py-1 text-xs font-semibold text-amber-400 ring-1 ring-inset ring-amber-400/20">
-                         ⚠️ ${alertTypes}
-                       </span>`
-                    : `<span class="text-slate-500 text-xs text-right block w-full">Normal</span>`;
+                // Build alert icons side by side in one cell
+                let alertIcons = [];
+                if (hasCallSpike) alertIcons.push(`<span class="glow-green text-emerald-400" title="Call 2x Spike">●</span>`);
+                if (hasPutSpike) alertIcons.push(`<span class="glow-red text-rose-400" title="Put 2x Spike">●</span>`);
+                if (putGtCall) alertIcons.push(`<span class="glow-yellow text-yellow-400" title="Put > Call">⚠</span>`);
+                const alertCell = alertIcons.length > 0
+                    ? alertIcons.join(' ')
+                    : `<span class="text-slate-600">–</span>`;
 
                 html += `
                     <tr class="${rowClass}">
-                        <td class="px-6 py-3 whitespace-nowrap text-sm font-semibold text-white">
-                            ${row.symbol}
-                        </td>
-                        <td class="px-6 py-3 whitespace-nowrap text-sm text-right tabular-data text-slate-400 font-medium">
-                            ${formatNum(eod.call)}
-                        </td>
-                        <td class="px-6 py-3 whitespace-nowrap text-sm text-right tabular-data text-emerald-400/90 font-medium tracking-wide">
-                            ${formatNum(row.call_volume)} ${callBadge}
-                        </td>
-                        <td class="px-6 py-3 whitespace-nowrap text-sm text-right tabular-data text-slate-400 font-medium">
-                            ${formatNum(eod.put)}
-                        </td>
-                        <td class="px-6 py-3 whitespace-nowrap text-sm text-right tabular-data text-rose-400/90 font-medium tracking-wide">
-                            ${formatNum(row.put_volume)} ${putBadge}
-                        </td>
-                        <td class="px-6 py-3 whitespace-nowrap text-sm text-right">
-                            ${alertMsg}
-                        </td>
+                        <td class="px-3 py-2 text-sm font-semibold text-white truncate">${row.symbol}</td>
+                        <td class="px-2 py-2 text-sm text-right tabular-data text-white font-medium">${formatNum(eod.call)}</td>
+                        <td class="px-2 py-2 text-sm text-right tabular-data text-emerald-400 font-medium">${formatNum(row.call_volume)}</td>
+                        <td class="px-2 py-2 text-sm text-right tabular-data text-white font-medium">${formatNum(eod.put)}</td>
+                        <td class="px-2 py-2 text-sm text-right tabular-data text-rose-400 font-medium">${formatNum(row.put_volume)}</td>
+                        <td class="px-2 py-2 text-center text-base">${alertCell}</td>
                     </tr>
                 `;
             }
@@ -440,8 +441,8 @@
         document.getElementById('searchInput').addEventListener('input', renderTable);
 
         // Start polling
-        fetchAnalytics(); // initial
-        setInterval(fetchAnalytics, 10000); // exactly 10s request
+        fetchAnalytics();
+        setInterval(fetchAnalytics, 10000);
     </script>
 </body>
 
