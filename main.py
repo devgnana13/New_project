@@ -128,17 +128,43 @@ def start_full_platform(access_token, db, token_manager):
         logger.info("EOD Snapshot daemon started. Awaiting 16:00 (4:00 PM) trigger...")
         while True:
             now = datetime.datetime.now()
+
+            # ── Skip weekends (Saturday=5, Sunday=6) ──
+            if now.weekday() in (5, 6):
+                # On weekends, just sleep and check again — never store 0s
+                time.sleep(60)
+                continue
+
             if now.hour == 16 and now.minute == 0:
                 logger.info("Market closed. Storing live aggregated volumes as EOD for tomorrow...")
                 today_str = now.strftime("%Y-%m-%d")
                 vols = vol_agg.get_volumes()
-                if vols and db.is_connected:
+
+                # ── Safety check: Only store if we have real (non-zero) data ──
+                total_volume = sum(
+                    v.get("call_volume", 0) + v.get("put_volume", 0)
+                    for v in vols.values()
+                ) if vols else 0
+
+                if total_volume > 0 and db.is_connected:
                     db.store_eod_volumes(vols, date=today_str)
-                    logger.info("Successfully took snapshot of %d symbols into DB for %s", len(vols), today_str)
+                    logger.info(
+                        "Successfully took snapshot of %d symbols into DB for %s (total volume: %d)",
+                        len(vols), today_str, total_volume,
+                    )
                     db.delete_old_eod_volumes(keep_date=today_str)
                     db.delete_old_alerts(keep_date=today_str)
-                    logger.info("Cleaned up previous day EOD volumes and alerts. Only %s data remains.", today_str)
-                time.sleep(65)
+                    logger.info(
+                        "Cleaned up previous day EOD volumes and alerts. Only %s data remains.",
+                        today_str,
+                    )
+                else:
+                    logger.warning(
+                        "⚠️ Skipping EOD snapshot — total volume is 0 (no live data). "
+                        "Previous day data preserved."
+                    )
+
+                time.sleep(65)  # Skip past the 16:00 minute
             time.sleep(20)
 
     threading.Thread(target=eod_snapshot_scheduler, daemon=True).start()

@@ -431,7 +431,7 @@ def create_app(
         Return EOD volumes for a given date.
 
         Query params:
-            date:   Date string YYYY-MM-DD (default: today)
+            date:   Date string YYYY-MM-DD (default: last trading day)
             symbol: Filter by symbol (optional)
 
         Response:
@@ -453,16 +453,33 @@ def create_app(
         date = request.args.get("date")
         symbol = request.args.get("symbol")
 
-        # Default to yesterday if not supplied
+        # Default to last trading day (skip weekends)
         if not date:
             from datetime import timedelta
-            date = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
+            check_date = datetime.now() - timedelta(days=1)
+            # Skip backwards over weekends
+            while check_date.weekday() in (5, 6):  # Sat=5, Sun=6
+                check_date -= timedelta(days=1)
+            date = check_date.strftime("%Y-%m-%d")
 
         if symbol:
             vol = db.get_eod_volume(symbol, date)
             data = [vol] if vol else []
         else:
             data = db.get_all_eod_volumes(date=date)
+
+        # Fallback: if no data found, search back up to 7 days
+        if not data and not request.args.get("date"):
+            from datetime import timedelta
+            for days_back in range(2, 8):
+                fallback_date = datetime.now() - timedelta(days=days_back)
+                if fallback_date.weekday() in (5, 6):
+                    continue
+                fallback_str = fallback_date.strftime("%Y-%m-%d")
+                data = db.get_all_eod_volumes(date=fallback_str)
+                if data:
+                    date = fallback_str
+                    break
 
         return jsonify({
             "status": "ok",

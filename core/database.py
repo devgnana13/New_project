@@ -353,15 +353,35 @@ class DatabaseManager:
 
     def get_yesterday_volume(self, symbol: str) -> Optional[dict]:
         """
-        Get yesterday's EOD volume for a symbol.
+        Get the last trading day's EOD volume for a symbol.
+        Skips weekends (Sat/Sun) and falls back up to 7 days.
 
         Returns:
             Dict with symbol, date, call_volume_total, put_volume_total.
             None if no data found.
         """
         self._ensure_connected()
-        yesterday = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
-        return self.get_eod_volume(symbol, yesterday)
+
+        # Find the last trading day (skip weekends)
+        check_date = datetime.now() - timedelta(days=1)
+        while check_date.weekday() in (5, 6):  # Sat=5, Sun=6
+            check_date -= timedelta(days=1)
+
+        # Try the calculated date first
+        result = self.get_eod_volume(symbol, check_date.strftime("%Y-%m-%d"))
+        if result:
+            return result
+
+        # Fallback: search back up to 7 days for data (handles holidays)
+        for days_back in range(2, 8):
+            fallback = datetime.now() - timedelta(days=days_back)
+            if fallback.weekday() in (5, 6):
+                continue
+            result = self.get_eod_volume(symbol, fallback.strftime("%Y-%m-%d"))
+            if result:
+                return result
+
+        return None
 
     def get_eod_volume(self, symbol: str, date: str) -> Optional[dict]:
         """
