@@ -534,15 +534,18 @@
                 <div class="steps">
                     <div class="step">
                         <span class="step-number">1</span>
-                        <span class="step-text"><strong>Open Kite Login</strong> — Click the button below to open the Zerodha login page</span>
+                        <span class="step-text"><strong>Open Kite Login</strong> — Click the button below to open the
+                            Zerodha login page</span>
                     </div>
                     <div class="step">
                         <span class="step-number">2</span>
-                        <span class="step-text"><strong>Login & Authorize</strong> — Enter your Zerodha credentials and authorize the app</span>
+                        <span class="step-text"><strong>Login & Authorize</strong> — Enter your Zerodha credentials and
+                            authorize the app</span>
                     </div>
                     <div class="step">
                         <span class="step-number">3</span>
-                        <span class="step-text"><strong>Copy Request Token</strong> — From the redirect URL, copy the <strong>request_token</strong> parameter value</span>
+                        <span class="step-text"><strong>Copy Request Token</strong> — From the redirect URL, copy the
+                            <strong>request_token</strong> parameter value</span>
                     </div>
                 </div>
 
@@ -562,8 +565,7 @@
                 <div class="input-group">
                     <label class="input-label" for="requestTokenInput">Paste Request Token</label>
                     <input type="text" id="requestTokenInput" class="token-input"
-                        placeholder="e.g. lg38HRRT7GkPaZnY8t3Q6VgsXVENIFpZ"
-                        autocomplete="off" spellcheck="false">
+                        placeholder="e.g. lg38HRRT7GkPaZnY8t3Q6VgsXVENIFpZ" autocomplete="off" spellcheck="false">
                 </div>
 
                 <!-- Submit Button -->
@@ -613,7 +615,11 @@
                         window.location.href = '/';
                     }, 1500);
                 } else {
-                    updateStatus('no-token', 'No valid token for today — please authenticate');
+                    let statusMsg = 'No valid token for today — please authenticate';
+                    if (data.last_token_date) {
+                        statusMsg += ` (last token: ${data.last_token_date})`;
+                    }
+                    updateStatus('no-token', statusMsg);
                 }
 
                 // Set the login URL

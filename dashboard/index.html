@@ -139,7 +139,27 @@
             </h1>
         </div>
 
-        <div class="flex items-center space-x-4">
+        <div class="flex items-center space-x-3">
+            <!-- Last Token Date Badge -->
+            <div id="tokenDateBadge"
+                class="hidden text-[11px] font-medium flex items-center gap-1.5 px-2.5 py-1 rounded-lg border"
+                style="background: rgba(30, 41, 59, 0.8);">
+                <span id="tokenDateDot" class="inline-flex h-2 w-2 rounded-full bg-slate-500"></span>
+                <span class="text-slate-400">Token:</span>
+                <span id="tokenDateText" class="tabular-data text-slate-300">—</span>
+            </div>
+
+            <!-- Token Setup Button -->
+            <a href="/setup" id="setupTokenBtn"
+                class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 border border-indigo-500/30 bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20 hover:border-indigo-500/50 hover:text-indigo-300 hover:shadow-lg hover:shadow-indigo-500/10">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                </svg>
+                Token Setup
+            </a>
+
+            <!-- Live Clock -->
             <div class="text-xs font-medium text-slate-400 flex items-center">
                 <span class="relative flex h-2 w-2 mr-1.5">
                     <span
@@ -245,6 +265,48 @@
         let sortAsc = true;
 
         const formatNum = (num) => new Intl.NumberFormat('en-IN').format(num || 0);
+
+        // Fetch and display token status
+        async function fetchTokenStatus() {
+            try {
+                const res = await fetch(`${API_BASE}/token/status`);
+                if (!res.ok) return;
+                const data = await res.json();
+
+                const badge = document.getElementById('tokenDateBadge');
+                const dot = document.getElementById('tokenDateDot');
+                const text = document.getElementById('tokenDateText');
+
+                if (data.last_token_date) {
+                    badge.classList.remove('hidden');
+
+                    if (data.has_valid_token) {
+                        // Token is valid for today
+                        dot.className = 'inline-flex h-2 w-2 rounded-full bg-emerald-500';
+                        badge.style.borderColor = 'rgba(52, 211, 153, 0.3)';
+                        text.className = 'tabular-data text-emerald-400';
+                        text.textContent = data.last_token_date + ' ✓';
+                    } else {
+                        // Token exists but not for today (stale)
+                        dot.className = 'inline-flex h-2 w-2 rounded-full bg-amber-500';
+                        badge.style.borderColor = 'rgba(251, 191, 36, 0.3)';
+                        text.className = 'tabular-data text-amber-400';
+                        text.textContent = data.last_token_date + ' (stale)';
+                    }
+                } else {
+                    badge.classList.remove('hidden');
+                    dot.className = 'inline-flex h-2 w-2 rounded-full bg-rose-500';
+                    badge.style.borderColor = 'rgba(251, 113, 133, 0.3)';
+                    text.className = 'tabular-data text-rose-400';
+                    text.textContent = 'No token';
+                }
+            } catch (err) {
+                console.warn('Could not fetch token status:', err);
+            }
+        }
+
+        // Fetch token status on load
+        fetchTokenStatus();
 
         // Update live clock
         setInterval(() => {

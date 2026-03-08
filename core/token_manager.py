@@ -50,6 +50,7 @@ class TokenManager:
         self._api_secret = api_secret
         self._collection = None
         self._access_token = None  # cached in-memory
+        self._cached_date = None   # date the cached token belongs to
 
         if db_manager and db_manager.is_connected:
             self._collection = db_manager._db["kite_tokens"]
@@ -65,14 +66,21 @@ class TokenManager:
         Returns:
             Access token string if found, None otherwise.
         """
-        if self._access_token:
+        today = datetime.now().strftime("%Y-%m-%d")
+
+        # Return cached token only if it was cached for TODAY
+        if self._access_token and self._cached_date == today:
             return self._access_token
+
+        # Clear stale cache if date has changed
+        if self._cached_date and self._cached_date != today:
+            logger.info("Day changed (%s → %s), clearing stale token cache.", self._cached_date, today)
+            self._access_token = None
+            self._cached_date = None
 
         if self._collection is None:
             logger.warning("Token collection not initialized (DB not connected)")
             return None
-
-        today = datetime.now().strftime("%Y-%m-%d")
 
         try:
             doc = self._collection.find_one(
@@ -82,11 +90,38 @@ class TokenManager:
 
             if doc and doc.get("access_token"):
                 self._access_token = doc["access_token"]
+                self._cached_date = today
                 logger.info("Found valid access token for today (%s) in MongoDB.", today)
                 return self._access_token
 
         except Exception as e:
             logger.error("Error fetching today's token from MongoDB: %s", e)
+
+        return None
+
+    def get_last_token_info(self) -> dict | None:
+        """
+        Get info about the most recently stored access token.
+
+        Returns:
+            Dict with 'date' and 'created_at', or None if no tokens exist.
+        """
+        if self._collection is None:
+            return None
+
+        try:
+            doc = self._collection.find_one(
+                {"api_key": self._api_key},
+                {"_id": 0, "date": 1, "created_at": 1},
+                sort=[("created_at", -1)],
+            )
+            if doc:
+                return {
+                    "date": doc.get("date", "Unknown"),
+                    "created_at": doc["created_at"].isoformat() if doc.get("created_at") else None,
+                }
+        except Exception as e:
+            logger.error("Error fetching last token info: %s", e)
 
         return None
 
@@ -124,8 +159,9 @@ class TokenManager:
             else:
                 logger.warning("DB not connected — token generated but NOT persisted!")
 
-            # Cache in memory
+            # Cache in memory with today's date
             self._access_token = access_token
+            self._cached_date = today
 
             return {"success": True, "access_token": access_token}
 
@@ -137,6 +173,7 @@ class TokenManager:
     def invalidate_token(self):
         """Clear the cached token (forces re-fetch from DB on next call)."""
         self._access_token = None
+        self._cached_date = None
 
     def validate_token(self, access_token: Optional[str] = None) -> bool:
         """

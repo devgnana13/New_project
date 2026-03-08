@@ -115,8 +115,11 @@ def create_app(
     def serve_dashboard():
         """Serve the frontend dashboard. Redirects to token setup if no valid token."""
         tm = app.config.get("token_manager")
-        if tm and not tm.get_today_token():
-            return redirect("/setup")
+        if tm:
+            # Invalidate cache to force a fresh DB check for today's date
+            tm.invalidate_token()
+            if not tm.get_today_token():
+                return redirect("/setup")
         dashboard_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "dashboard")
         return send_from_directory(dashboard_dir, "index.html")
 
@@ -150,10 +153,13 @@ def create_app(
             }), 503
 
         today_token = tm.get_today_token()
+        last_info = tm.get_last_token_info()
         return jsonify({
             "has_valid_token": today_token is not None,
             "date": datetime.now().strftime("%Y-%m-%d"),
             "login_url": tm.get_login_url(),
+            "last_token_date": last_info.get("date") if last_info else None,
+            "last_token_created_at": last_info.get("created_at") if last_info else None,
         })
 
     @app.route("/api/token/generate", methods=["POST"])
