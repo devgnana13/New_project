@@ -413,17 +413,24 @@
 
                 if (isMarketClosed) {
                     banner.classList.remove('hidden');
-                    if (volData.data_date) {
-                        document.getElementById('marketClosedDate').textContent = `(${volData.data_date})`;
-                    }
                     // Update header indicator
                     statusDot.innerHTML = '<span class="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>';
                     statusText.textContent = 'CLOSED';
                     statusText.className = 'text-amber-400';
-                    // Update table headers
-                    tableTitle.textContent = `Last Trading Day Volume (ATM ±10)${volData.data_date ? ' — ' + volData.data_date : ''}`;
-                    colLiveCE.innerHTML = `${volData.data_date || 'Prev'} CE ↕`;
-                    colLivePE.innerHTML = `${volData.data_date || 'Prev'} PE ↕`;
+
+                    if (volData.data_date) {
+                        // Has actual previous day EOD data
+                        document.getElementById('marketClosedDate').textContent = `(${volData.data_date})`;
+                        tableTitle.textContent = `Last Trading Day Volume (ATM ±10) — ${volData.data_date}`;
+                        colLiveCE.innerHTML = `${volData.data_date} CE ↕`;
+                        colLivePE.innerHTML = `${volData.data_date} PE ↕`;
+                    } else {
+                        // No historical data in DB
+                        document.getElementById('marketClosedDate').textContent = '— No previous data stored yet. Data will populate on next trading day at 4 PM.';
+                        tableTitle.textContent = 'Market Closed — Awaiting First Trading Day Snapshot';
+                        colLiveCE.innerHTML = 'Live CE ↕';
+                        colLivePE.innerHTML = 'Live PE ↕';
+                    }
                 } else {
                     banner.classList.add('hidden');
                     statusDot.innerHTML = '<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span><span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>';
