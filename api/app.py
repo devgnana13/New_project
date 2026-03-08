@@ -522,6 +522,74 @@ def create_app(
         })
 
     # ──────────────────────────────────────────────────────────
+    #  ENDPOINT: /api/debug/ticks (Diagnostic)
+    # ──────────────────────────────────────────────────────────
+
+    @app.route("/api/debug/ticks", methods=["GET"])
+    def get_debug_ticks():
+        """
+        Return raw tick data for a specific symbol's tokens.
+        Useful for diagnosing volume issues.
+
+        Query params:
+            symbol: Stock symbol (default: NIFTY)
+            limit:  Max ticks to return (default: 5)
+        """
+        vol_agg = app.config.get("volume_aggregator")
+        tick_agg = app.config.get("tick_aggregator")
+
+        if not vol_agg or not tick_agg:
+            return jsonify({"status": "error", "message": "Aggregators not initialized"}), 503
+
+        symbol = request.args.get("symbol", "NIFTY").upper()
+        limit = request.args.get("limit", 5, type=int)
+
+        # Get token mapping for this symbol
+        with vol_agg._lock:
+            symbol_tokens = vol_agg._symbol_tokens.get(symbol, {})
+            token_map = dict(vol_agg._token_map)
+
+        ce_tokens = symbol_tokens.get("CE", [])[:limit]
+        pe_tokens = symbol_tokens.get("PE", [])[:limit]
+
+        result = {
+            "symbol": symbol,
+            "ce_token_count": len(symbol_tokens.get("CE", [])),
+            "pe_token_count": len(symbol_tokens.get("PE", [])),
+            "ce_ticks": [],
+            "pe_ticks": [],
+            "total_instruments_in_aggregator": len(tick_agg._ticks),
+        }
+
+        for token in ce_tokens:
+            tick = tick_agg.get_tick(token)
+            mapping = token_map.get(token, ("?", "?", 1, 0.0))
+            result["ce_ticks"].append({
+                "token": token,
+                "strike": mapping[3] if len(mapping) > 3 else "?",
+                "has_tick": tick is not None,
+                "last_price": tick.last_price if tick else None,
+                "volume": tick.volume if tick else None,
+                "timestamp": str(tick.timestamp) if tick and tick.timestamp else None,
+                "received_at": tick.received_at if tick else None,
+            })
+
+        for token in pe_tokens:
+            tick = tick_agg.get_tick(token)
+            mapping = token_map.get(token, ("?", "?", 1, 0.0))
+            result["pe_ticks"].append({
+                "token": token,
+                "strike": mapping[3] if len(mapping) > 3 else "?",
+                "has_tick": tick is not None,
+                "last_price": tick.last_price if tick else None,
+                "volume": tick.volume if tick else None,
+                "timestamp": str(tick.timestamp) if tick and tick.timestamp else None,
+                "received_at": tick.received_at if tick else None,
+            })
+
+        return jsonify({"status": "ok", "data": result})
+
+    # ──────────────────────────────────────────────────────────
     #  ERROR HANDLERS
     # ──────────────────────────────────────────────────────────
 
