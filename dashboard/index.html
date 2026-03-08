@@ -159,14 +159,14 @@
                 Token Setup
             </a>
 
-            <!-- Live Clock -->
-            <div class="text-xs font-medium text-slate-400 flex items-center">
-                <span class="relative flex h-2 w-2 mr-1.5">
+            <!-- Live Clock / Market Status -->
+            <div id="marketStatusIndicator" class="text-xs font-medium text-slate-400 flex items-center">
+                <span id="liveStatusDot" class="relative flex h-2 w-2 mr-1.5">
                     <span
                         class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                     <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
                 </span>
-                LIVE <span id="clock" class="ml-1.5 tabular-data">--:--:--</span>
+                <span id="liveStatusText">LIVE</span> <span id="clock" class="ml-1.5 tabular-data">--:--:--</span>
             </div>
         </div>
     </header>
@@ -199,10 +199,19 @@
                 </div>
             </div>
 
+            <!-- Market Closed Banner (hidden by default) -->
+            <div id="marketClosedBanner"
+                class="hidden bg-amber-500/10 border border-amber-500/30 rounded-lg px-4 py-2 flex items-center gap-2">
+                <span class="text-amber-400 text-sm">⏸</span>
+                <span class="text-amber-300 text-xs font-medium">Market Closed</span>
+                <span class="text-slate-400 text-xs">— Showing last trading day data</span>
+                <span id="marketClosedDate" class="text-amber-400 text-xs font-mono"></span>
+            </div>
+
             <!-- Table Container -->
             <div class="bg-card rounded-lg border border-slate-700/50 overflow-hidden flex flex-col">
                 <div class="px-3 py-2 border-b border-slate-700/50 flex justify-between items-center bg-slate-800/50">
-                    <h2 class="text-sm font-semibold text-white">Live EOD Totals (ATM ±10)</h2>
+                    <h2 id="tableTitle" class="text-sm font-semibold text-white">Live EOD Totals (ATM ±10)</h2>
                     <div class="relative">
                         <svg class="w-3.5 h-3.5 absolute left-2.5 top-2 text-slate-400" fill="none"
                             stroke="currentColor" viewBox="0 0 24 24">
@@ -221,10 +230,12 @@
                                 <th class="px-3 py-2 font-semibold cursor-pointer hover:text-white"
                                     onclick="sortTable('symbol')">Stock ↓</th>
                                 <th class="px-2 py-2 font-semibold text-right">Prev CE</th>
-                                <th class="px-2 py-2 font-semibold text-right cursor-pointer hover:text-white"
+                                <th id="colLiveCE"
+                                    class="px-2 py-2 font-semibold text-right cursor-pointer hover:text-white"
                                     onclick="sortTable('call_volume')">Live CE ↕</th>
                                 <th class="px-2 py-2 font-semibold text-right">Prev PE</th>
-                                <th class="px-2 py-2 font-semibold text-right cursor-pointer hover:text-white"
+                                <th id="colLivePE"
+                                    class="px-2 py-2 font-semibold text-right cursor-pointer hover:text-white"
                                     onclick="sortTable('put_volume')">Live PE ↕</th>
                                 <th class="px-2 py-2 font-semibold text-center cursor-pointer hover:text-white"
                                     onclick="sortTable('alert')" title="CE 2x | PE 2x | Put>Call">Alerts ↕</th>
@@ -390,6 +401,38 @@
 
                 const volData = await volRes.json();
                 const alertData = alertRes.ok ? await alertRes.json() : { data: [] };
+
+                // Handle market closed state
+                const isMarketClosed = volData.market_closed === true;
+                const banner = document.getElementById('marketClosedBanner');
+                const statusDot = document.getElementById('liveStatusDot');
+                const statusText = document.getElementById('liveStatusText');
+                const tableTitle = document.getElementById('tableTitle');
+                const colLiveCE = document.getElementById('colLiveCE');
+                const colLivePE = document.getElementById('colLivePE');
+
+                if (isMarketClosed) {
+                    banner.classList.remove('hidden');
+                    if (volData.data_date) {
+                        document.getElementById('marketClosedDate').textContent = `(${volData.data_date})`;
+                    }
+                    // Update header indicator
+                    statusDot.innerHTML = '<span class="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>';
+                    statusText.textContent = 'CLOSED';
+                    statusText.className = 'text-amber-400';
+                    // Update table headers
+                    tableTitle.textContent = `Last Trading Day Volume (ATM ±10)${volData.data_date ? ' — ' + volData.data_date : ''}`;
+                    colLiveCE.innerHTML = `${volData.data_date || 'Prev'} CE ↕`;
+                    colLivePE.innerHTML = `${volData.data_date || 'Prev'} PE ↕`;
+                } else {
+                    banner.classList.add('hidden');
+                    statusDot.innerHTML = '<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span><span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>';
+                    statusText.textContent = 'LIVE';
+                    statusText.className = '';
+                    tableTitle.textContent = 'Live EOD Totals (ATM ±10)';
+                    colLiveCE.innerHTML = 'Live CE ↕';
+                    colLivePE.innerHTML = 'Live PE ↕';
+                }
 
                 alertsMap.clear();
                 if (alertData.data) {

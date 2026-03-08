@@ -210,11 +210,15 @@ def create_app(
     def get_live_volumes():
         """
         Return live CE/PE volume totals for all stocks.
+        On non-trading days (weekends/holidays), falls back to
+        the last trading day's EOD data.
 
         Response:
         {
             "status": "ok",
             "timestamp": "2026-03-05T10:30:00",
+            "market_closed": false,
+            "data_source": "live",
             "count": 170,
             "data": {
                 "RELIANCE": {
@@ -234,9 +238,47 @@ def create_app(
 
         volumes = vol_agg.get_volumes()
 
+        # Check if we have any real live data
+        total_volume = sum(
+            v.get("call_volume", 0) + v.get("put_volume", 0)
+            for v in volumes.values()
+        ) if volumes else 0
+
+        market_closed = total_volume == 0
+        data_source = "live"
+        data_date = None
+
+        # If no live data, fall back to last trading day's EOD
+        if market_closed and volumes:
+            db = app.config.get("database")
+            if db:
+                from datetime import timedelta
+                # Search backwards for the last day with actual data
+                for days_back in range(1, 8):
+                    check_date = datetime.now() - timedelta(days=days_back)
+                    if check_date.weekday() in (5, 6):
+                        continue
+                    date_str = check_date.strftime("%Y-%m-%d")
+                    eod_data = db.get_all_eod_volumes(date=date_str)
+                    if eod_data:
+                        # Convert EOD format to live volume format
+                        for item in eod_data:
+                            symbol = item.get("symbol", "")
+                            if symbol in volumes:
+                                volumes[symbol] = {
+                                    "call_volume": item.get("call_volume_total", 0),
+                                    "put_volume": item.get("put_volume_total", 0),
+                                }
+                        data_source = f"eod_{date_str}"
+                        data_date = date_str
+                        break
+
         return jsonify({
             "status": "ok",
             "timestamp": datetime.now().isoformat(),
+            "market_closed": market_closed,
+            "data_source": data_source,
+            "data_date": data_date,
             "count": len(volumes),
             "data": volumes,
         })
