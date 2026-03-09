@@ -52,15 +52,13 @@ def wait_for_token(token_manager, db, flask_port):
         token_manager=token_manager,
     )
 
-    # We run the Flask setup server in a background thread
-    # and poll for the token in the main thread
+    # Use Werkzeug's make_server so we can cleanly shut it down
+    # and release the port before starting the full server
+    from werkzeug.serving import make_server
+    setup_server = make_server("0.0.0.0", flask_port, setup_app)
+
     server_thread = threading.Thread(
-        target=lambda: setup_app.run(
-            host="0.0.0.0",
-            port=flask_port,
-            debug=False,
-            use_reloader=False,
-        ),
+        target=setup_server.serve_forever,
         daemon=True,
     )
     server_thread.start()
@@ -70,6 +68,13 @@ def wait_for_token(token_manager, db, flask_port):
         token = token_manager.get_today_token()
         if token:
             logger.info("✅ Access token received! Proceeding with full startup...")
+            # Cleanly shut down the setup server to release the port
+            logger.info("Shutting down token setup server...")
+            setup_server.shutdown()
+            server_thread.join(timeout=5)
+            logger.info("Setup server stopped. Port %s is free.", flask_port)
+            # Small delay to ensure OS releases the port
+            time.sleep(1)
             return token
         time.sleep(2)
 
