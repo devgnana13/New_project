@@ -123,6 +123,17 @@ def create_app(
         dashboard_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "dashboard")
         return send_from_directory(dashboard_dir, "index.html")
 
+    @app.route("/oi")
+    def serve_oi_dashboard():
+        """Serve the OI Analysis dashboard."""
+        tm = app.config.get("token_manager")
+        if tm:
+            tm.invalidate_token()
+            if not tm.get_today_token():
+                return redirect("/setup")
+        dashboard_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "dashboard")
+        return send_from_directory(dashboard_dir, "oi_analysis.html")
+
     @app.route("/setup")
     def serve_token_setup():
         """Serve the token setup page."""
@@ -363,6 +374,90 @@ def create_app(
             "timestamp": datetime.now().isoformat(),
             "count": len(detailed),
             "data": detailed,
+        })
+
+    # ──────────────────────────────────────────────────────────
+    #  ENDPOINT: /api/oi-data
+    # ──────────────────────────────────────────────────────────
+
+    @app.route("/api/oi-data", methods=["GET"])
+    def get_oi_data():
+        """
+        Return detailed OI data including strike-level changes and alerts.
+        """
+        vol_agg = app.config.get("volume_aggregator")
+        db = app.config.get("database")
+        if vol_agg is None or db is None:
+            return jsonify({
+                "status": "error",
+                "message": "System not fully initialized",
+            }), 503
+
+        detailed = vol_agg.get_detailed_volumes()
+
+        # Build OI response
+        results = {}
+        for symbol, data in detailed.items():
+            live_strikes = data.get("strike_details", {})
+            yesterday_data = db.get_yesterday_volume(symbol)
+            yesterday_strikes = yesterday_data.get("strike_details", {}) if yesterday_data else {}
+
+            strike_results = {}
+            alerts = []
+            total_ce_oi_chg = 0
+            total_pe_oi_chg = 0
+            
+            for strike, live in live_strikes.items():
+                yest = yesterday_strikes.get(str(strike), yesterday_strikes.get(strike, {}))
+                
+                ce_oi_live = live.get("ce_oi", 0)
+                pe_oi_live = live.get("pe_oi", 0)
+                ce_oi_yest = yest.get("ce_oi", 0) if isinstance(yest, dict) else 0
+                pe_oi_yest = yest.get("pe_oi", 0) if isinstance(yest, dict) else 0
+
+                ce_oi_chg = ce_oi_live - ce_oi_yest if ce_oi_yest else 0
+                pe_oi_chg = pe_oi_live - pe_oi_yest if pe_oi_yest else 0
+                
+                total_ce_oi_chg += ce_oi_chg
+                total_pe_oi_chg += pe_oi_chg
+
+                strike_results[strike] = {
+                    "ce_oi": ce_oi_live,
+                    "pe_oi": pe_oi_live,
+                    "ce_oi_chg": ce_oi_chg,
+                    "pe_oi_chg": pe_oi_chg
+                }
+
+                if ce_oi_chg <= -100:
+                    alerts.append({"type": "CE_OI_DROP", "strike": strike, "change": ce_oi_chg})
+                elif ce_oi_chg >= 100:
+                    alerts.append({"type": "CE_OI_SPIKE", "strike": strike, "change": ce_oi_chg})
+
+                if pe_oi_chg <= -100:
+                    alerts.append({"type": "PE_OI_DROP", "strike": strike, "change": pe_oi_chg})
+                elif pe_oi_chg >= 100:
+                    alerts.append({"type": "PE_OI_SPIKE", "strike": strike, "change": pe_oi_chg})
+
+            # Get overall
+            call_oi = data.get("call_oi", 0)
+            put_oi = data.get("put_oi", 0)
+
+            results[symbol] = {
+                "symbol": symbol,
+                "call_oi": call_oi,
+                "put_oi": put_oi,
+                "call_oi_chg": total_ce_oi_chg,
+                "put_oi_chg": total_pe_oi_chg,
+                "strikes": strike_results,
+                "alerts": alerts,
+                "updated_at": data.get("updated_at")
+            }
+
+        return jsonify({
+            "status": "ok",
+            "timestamp": datetime.now().isoformat(),
+            "count": len(results),
+            "data": results,
         })
 
     # ──────────────────────────────────────────────────────────

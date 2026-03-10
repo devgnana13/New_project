@@ -228,6 +228,9 @@ class DatabaseManager:
                 "date": date,
                 "call_volume_total": vol_data.get("call_volume", 0),
                 "put_volume_total": vol_data.get("put_volume", 0),
+                "call_oi_total": vol_data.get("call_oi", 0),
+                "put_oi_total": vol_data.get("put_oi", 0),
+                "strike_details": vol_data.get("strike_details", {}),
                 "created_at": now,
             }
 
@@ -309,15 +312,21 @@ class DatabaseManager:
         symbol: str,
         call_volume_total: int,
         put_volume_total: int,
+        call_oi_total: int = 0,
+        put_oi_total: int = 0,
+        strike_details: dict = None,
         date: str = None,
     ) -> bool:
         """
-        Store EOD volume for a single symbol.
+        Store EOD volume and OI for a single symbol.
 
         Args:
             symbol:            Stock symbol.
             call_volume_total: Total CE volume for the day.
             put_volume_total:  Total PE volume for the day.
+            call_oi_total:     Total CE OI for the day.
+            put_oi_total:      Total PE OI for the day.
+            strike_details:    Strike-level OI and volume.
             date:              Date string. Defaults to today.
 
         Returns:
@@ -333,6 +342,9 @@ class DatabaseManager:
             "date": date,
             "call_volume_total": call_volume_total,
             "put_volume_total": put_volume_total,
+            "call_oi_total": call_oi_total,
+            "put_oi_total": put_oi_total,
+            "strike_details": strike_details or {},
             "created_at": datetime.utcnow(),
         }
 
@@ -400,7 +412,9 @@ class DatabaseManager:
         doc = self._eod_volumes.find_one(
             {"symbol": symbol.upper(), "date": date},
             {"_id": 0, "symbol": 1, "date": 1,
-             "call_volume_total": 1, "put_volume_total": 1},
+             "call_volume_total": 1, "put_volume_total": 1,
+             "call_oi_total": 1, "put_oi_total": 1,
+             "strike_details": 1},
         )
         return doc
 
@@ -425,7 +439,9 @@ class DatabaseManager:
         cursor = self._eod_volumes.find(
             {"symbol": symbol.upper(), "date": {"$gte": cutoff}},
             {"_id": 0, "symbol": 1, "date": 1,
-             "call_volume_total": 1, "put_volume_total": 1},
+             "call_volume_total": 1, "put_volume_total": 1,
+             "call_oi_total": 1, "put_oi_total": 1,
+             "strike_details": 1},
         ).sort("date", ASCENDING)
 
         return list(cursor)

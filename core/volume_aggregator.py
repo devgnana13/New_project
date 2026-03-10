@@ -79,6 +79,7 @@ class SymbolVolume:
     """
     __slots__ = (
         "symbol", "call_volume", "put_volume",
+        "call_oi", "put_oi", "strike_details",
         "call_tokens", "put_tokens", "updated_at",
     )
 
@@ -86,6 +87,9 @@ class SymbolVolume:
         self.symbol = symbol
         self.call_volume: int = 0
         self.put_volume: int = 0
+        self.call_oi: int = 0
+        self.put_oi: int = 0
+        self.strike_details: dict[float, dict] = {}
         self.call_tokens: int = 0
         self.put_tokens: int = 0
         self.updated_at: Optional[datetime] = None
@@ -94,6 +98,9 @@ class SymbolVolume:
         return {
             "call_volume": self.call_volume,
             "put_volume": self.put_volume,
+            "call_oi": self.call_oi,
+            "put_oi": self.put_oi,
+            "strike_details": self.strike_details,
             "call_tokens": self.call_tokens,
             "put_tokens": self.put_tokens,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
@@ -139,9 +146,13 @@ class VolumeAggregator:
         # {symbol: {"CE": [token1, token2, ...], "PE": [...]}}
         self._symbol_tokens: dict[str, dict[str, list[int]]] = {}
 
-        # ── Volume store ──
+        # ── Volume & OI store ──
         self._volumes: dict[str, SymbolVolume] = {}
         self._lock = threading.Lock()
+
+        # ── Mode toggle ──
+        self._current_mode = "volume"
+        self._mode_switch_time = time.time()
 
         # ── Background thread ──
         self._thread: Optional[threading.Thread] = None
@@ -462,28 +473,45 @@ class VolumeAggregator:
                     sv = SymbolVolume(symbol)
                     self._volumes[symbol] = sv
 
-                # Sum CE volumes
+                # Process CE
                 ce_vol = 0
+                ce_oi = 0
                 ce_count = 0
                 for token in token_groups.get("CE", []):
                     tick = ticks.get(token)
                     if tick:
                         ce_vol += tick.volume
+                        ce_oi += tick.oi
                         ce_count += 1
+                        strike = self._token_map.get(token, (None, None, 1, 0.0))[3]
+                        if strike not in sv.strike_details:
+                            sv.strike_details[strike] = {"ce_vol": 0, "pe_vol": 0, "ce_oi": 0, "pe_oi": 0}
+                        sv.strike_details[strike]["ce_vol"] = tick.volume
+                        sv.strike_details[strike]["ce_oi"] = tick.oi
 
-                # Sum PE volumes
+                # Process PE
                 pe_vol = 0
+                pe_oi = 0
                 pe_count = 0
                 for token in token_groups.get("PE", []):
                     tick = ticks.get(token)
                     if tick:
                         pe_vol += tick.volume
+                        pe_oi += tick.oi
                         pe_count += 1
+                        strike = self._token_map.get(token, (None, None, 1, 0.0))[3]
+                        if strike not in sv.strike_details:
+                            sv.strike_details[strike] = {"ce_vol": 0, "pe_vol": 0, "ce_oi": 0, "pe_oi": 0}
+                        sv.strike_details[strike]["pe_vol"] = tick.volume
+                        sv.strike_details[strike]["pe_oi"] = tick.oi
 
                 sv.call_volume = ce_vol
                 sv.put_volume = pe_vol
+                sv.call_oi = ce_oi
+                sv.put_oi = pe_oi
                 sv.call_tokens = ce_count
                 sv.put_tokens = pe_count
+
                 sv.updated_at = now
                 
                 # Custom logging for all symbols' strike breakdowns (periodically)
