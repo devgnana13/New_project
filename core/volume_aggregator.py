@@ -480,14 +480,21 @@ class VolumeAggregator:
                 for token in token_groups.get("CE", []):
                     tick = ticks.get(token)
                     if tick:
-                        ce_vol += tick.volume
-                        ce_oi += tick.oi
+                        token_info = self._token_map.get(token, ("", "", 1, 0.0))
+                        lot_size = token_info[2] or 1
+                        strike = token_info[3]
+                        
+                        vol_lots = tick.volume // lot_size
+                        oi_lots = tick.oi // lot_size
+                        
+                        ce_vol += vol_lots
+                        ce_oi += oi_lots
                         ce_count += 1
-                        strike = self._token_map.get(token, (None, None, 1, 0.0))[3]
+                        
                         if strike not in sv.strike_details:
                             sv.strike_details[strike] = {"ce_vol": 0, "pe_vol": 0, "ce_oi": 0, "pe_oi": 0}
-                        sv.strike_details[strike]["ce_vol"] = tick.volume
-                        sv.strike_details[strike]["ce_oi"] = tick.oi
+                        sv.strike_details[strike]["ce_vol"] = vol_lots
+                        sv.strike_details[strike]["ce_oi"] = oi_lots
 
                 # Process PE
                 pe_vol = 0
@@ -496,14 +503,21 @@ class VolumeAggregator:
                 for token in token_groups.get("PE", []):
                     tick = ticks.get(token)
                     if tick:
-                        pe_vol += tick.volume
-                        pe_oi += tick.oi
+                        token_info = self._token_map.get(token, (None, None, 1, 0.0))
+                        lot_size = token_info[2] or 1
+                        strike = token_info[3]
+                        
+                        vol_lots = tick.volume // lot_size
+                        oi_lots = tick.oi // lot_size
+                        
+                        pe_vol += vol_lots
+                        pe_oi += oi_lots
                         pe_count += 1
-                        strike = self._token_map.get(token, (None, None, 1, 0.0))[3]
+                        
                         if strike not in sv.strike_details:
                             sv.strike_details[strike] = {"ce_vol": 0, "pe_vol": 0, "ce_oi": 0, "pe_oi": 0}
-                        sv.strike_details[strike]["pe_vol"] = tick.volume
-                        sv.strike_details[strike]["pe_oi"] = tick.oi
+                        sv.strike_details[strike]["pe_vol"] = vol_lots
+                        sv.strike_details[strike]["pe_oi"] = oi_lots
 
                 sv.call_volume = ce_vol
                 sv.put_volume = pe_vol
@@ -521,14 +535,18 @@ class VolumeAggregator:
                     for token in token_groups.get("CE", []):
                         tick = ticks.get(token)
                         if tick:
-                            strike = self._token_map.get(token, (None, None, 1, 0.0))[3]
-                            ce_strikes.append(f"{strike}:{tick.volume}")
+                            token_info = self._token_map.get(token, (None, None, 1, 0.0))
+                            strike = token_info[3]
+                            lot_size = token_info[2] or 1
+                            ce_strikes.append(f"{strike}:{tick.volume // lot_size}")
                     
                     for token in token_groups.get("PE", []):
                         tick = ticks.get(token)
                         if tick:
-                            strike = self._token_map.get(token, (None, None, 1, 0.0))[3]
-                            pe_strikes.append(f"{strike}:{tick.volume}")
+                            token_info = self._token_map.get(token, (None, None, 1, 0.0))
+                            strike = token_info[3]
+                            lot_size = token_info[2] or 1
+                            pe_strikes.append(f"{strike}:{tick.volume // lot_size}")
                             
                     if ce_strikes or pe_strikes:
                         logger.info("[%s] Breakdown (CE): %s", symbol, " | ".join(ce_strikes))
