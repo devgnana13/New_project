@@ -143,7 +143,7 @@ def start_full_platform(access_token, db, token_manager):
             if now.hour == 16 and now.minute == 0:
                 logger.info("Market closed. Storing live aggregated volumes as EOD for tomorrow...")
                 today_str = now.strftime("%Y-%m-%d")
-                vols = vol_agg.get_volumes()
+                vols = vol_agg.get_detailed_volumes()
 
                 # ── Safety check: Only store if we have real (non-zero) data ──
                 total_volume = sum(
