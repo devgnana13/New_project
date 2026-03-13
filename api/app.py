@@ -220,16 +220,12 @@ def create_app(
     @app.route("/api/live-volumes", methods=["GET"])
     def get_live_volumes():
         """
-        Return live CE/PE volume totals for all stocks.
-        On non-trading days (weekends/holidays), falls back to
-        the last trading day's EOD data.
+        Return live CE/PE volume totals for all stocks (real-time).
 
         Response:
         {
             "status": "ok",
             "timestamp": "2026-03-05T10:30:00",
-            "market_closed": false,
-            "data_source": "live",
             "count": 170,
             "data": {
                 "RELIANCE": {
@@ -249,47 +245,9 @@ def create_app(
 
         volumes = vol_agg.get_volumes()
 
-        # Check if we have any real live data
-        total_volume = sum(
-            v.get("call_volume", 0) + v.get("put_volume", 0)
-            for v in volumes.values()
-        ) if volumes else 0
-
-        market_closed = total_volume == 0
-        data_source = "live"
-        data_date = None
-
-        # If no live data, fall back to last trading day's EOD
-        if market_closed and volumes:
-            db = app.config.get("database")
-            if db:
-                from datetime import timedelta
-                # Search backwards for the last day with actual data
-                for days_back in range(1, 8):
-                    check_date = datetime.now() - timedelta(days=days_back)
-                    if check_date.weekday() in (5, 6):
-                        continue
-                    date_str = check_date.strftime("%Y-%m-%d")
-                    eod_data = db.get_all_eod_volumes(date=date_str)
-                    if eod_data:
-                        # Convert EOD format to live volume format
-                        for item in eod_data:
-                            symbol = item.get("symbol", "")
-                            if symbol in volumes:
-                                volumes[symbol] = {
-                                    "call_volume": item.get("call_volume_total", 0),
-                                    "put_volume": item.get("put_volume_total", 0),
-                                }
-                        data_source = f"eod_{date_str}"
-                        data_date = date_str
-                        break
-
         return jsonify({
             "status": "ok",
             "timestamp": datetime.now().isoformat(),
-            "market_closed": market_closed,
-            "data_source": data_source,
-            "data_date": data_date,
             "count": len(volumes),
             "data": volumes,
         })
@@ -590,33 +548,17 @@ def create_app(
         date = request.args.get("date")
         symbol = request.args.get("symbol")
 
-        # Default to last trading day (skip weekends)
+        # Default to previous trading day (skip weekends + holidays, uses IST)
         if not date:
-            from datetime import timedelta
-            check_date = datetime.now() - timedelta(days=1)
-            # Skip backwards over weekends
-            while check_date.weekday() in (5, 6):  # Sat=5, Sun=6
-                check_date -= timedelta(days=1)
-            date = check_date.strftime("%Y-%m-%d")
+            from core.constants import get_previous_trading_day
+            prev_day = get_previous_trading_day()
+            date = prev_day.strftime("%Y-%m-%d") if prev_day else datetime.now().strftime("%Y-%m-%d")
 
         if symbol:
             vol = db.get_eod_volume(symbol, date)
             data = [vol] if vol else []
         else:
             data = db.get_all_eod_volumes(date=date)
-
-        # Fallback: if no data found, search back up to 7 days
-        if not data and not request.args.get("date"):
-            from datetime import timedelta
-            for days_back in range(2, 8):
-                fallback_date = datetime.now() - timedelta(days=days_back)
-                if fallback_date.weekday() in (5, 6):
-                    continue
-                fallback_str = fallback_date.strftime("%Y-%m-%d")
-                data = db.get_all_eod_volumes(date=fallback_str)
-                if data:
-                    date = fallback_str
-                    break
 
         return jsonify({
             "status": "ok",

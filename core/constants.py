@@ -110,3 +110,88 @@ CACHE_EXPIRY_HOURS = 18  # Re-download if cache is older than 18 hours
 # ──────────────────────────────────────────────────────────────
 
 QUOTE_BATCH_SIZE = 450
+
+
+# ──────────────────────────────────────────────────────────────
+#  NSE HOLIDAYS (Market Closed Days, excluding weekends)
+#  Update this list at the start of each year.
+#  Source: https://www.nseindia.com/resources/exchange-communication-holidays
+# ──────────────────────────────────────────────────────────────
+
+NSE_HOLIDAYS_2026 = {
+    "2026-01-26",   # Republic Day
+    "2026-02-17",   # Maha Shivaratri
+    "2026-03-10",   # Ramadan (Eid ul-Fitr) - tentative
+    "2026-03-17",   # Holi
+    "2026-03-30",   # Id-ul-Fitr (Eid)
+    "2026-04-02",   # Ram Navami
+    "2026-04-03",   # Mahavir Jayanti
+    "2026-04-14",   # Dr. Ambedkar Jayanti / Good Friday
+    "2026-05-01",   # Maharashtra Day / May Day
+    "2026-05-25",   # Buddha Purnima
+    "2026-06-07",   # Eid ul-Adha (Bakrid) - tentative
+    "2026-07-07",   # Muharram - tentative
+    "2026-08-15",   # Independence Day
+    "2026-08-27",   # Janmashtami
+    "2026-09-05",   # Milad-un-Nabi - tentative
+    "2026-10-02",   # Mahatma Gandhi Jayanti
+    "2026-10-20",   # Dussehra
+    "2026-10-21",   # Dussehra (additional)
+    "2026-11-09",   # Diwali (Laxmi Puja)
+    "2026-11-10",   # Diwali (Balipratipada)
+    "2026-11-20",   # Guru Nanak Jayanti
+    "2026-12-25",   # Christmas
+}
+
+
+# ── IST Timezone (Hostinger VPS may be in UTC, so always use IST) ──
+from datetime import datetime, timedelta, timezone
+
+IST = timezone(timedelta(hours=5, minutes=30))
+
+
+def now_ist():
+    """Get current datetime in IST. Works on any VPS regardless of system TZ."""
+    return datetime.now(IST)
+
+
+def is_trading_day(dt) -> bool:
+    """
+    Check if a given date is a trading day (not weekend, not NSE holiday).
+
+    Args:
+        dt: datetime or date object.
+
+    Returns:
+        True if the market is open on this date.
+    """
+    if dt.weekday() in (5, 6):  # Saturday=5, Sunday=6
+        return False
+    date_str = dt.strftime("%Y-%m-%d") if hasattr(dt, "strftime") else str(dt)
+    return date_str not in NSE_HOLIDAYS_2026
+
+
+def get_previous_trading_day(from_date=None, max_lookback=10):
+    """
+    Get the previous trading day relative to `from_date`.
+
+    Skips weekends (Sat, Sun) AND NSE holidays.
+    For Monday → returns Friday (unless Friday was a holiday, then Thursday, etc.)
+
+    Args:
+        from_date: datetime object. Defaults to today in IST.
+        max_lookback: Maximum days to look back (default 10).
+
+    Returns:
+        datetime object of the previous trading day, or None if not found.
+    """
+    if from_date is None:
+        from_date = now_ist()
+
+    check_date = from_date - timedelta(days=1)
+    for _ in range(max_lookback):
+        if is_trading_day(check_date):
+            return check_date
+        check_date -= timedelta(days=1)
+
+    return None

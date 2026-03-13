@@ -127,49 +127,82 @@ def start_full_platform(access_token, db, token_manager):
     alert_engine = AlertEngine(vol_agg, db)
     alert_engine.start()
 
-    # Background thread to snapshot EOD volumes daily at 4:00 PM
+    # Background thread to snapshot EOD volumes + OI daily near market close
     def eod_snapshot_scheduler():
-        import datetime
-        logger.info("EOD Snapshot daemon started. Awaiting 16:00 (4:00 PM) trigger...")
-        while True:
-            now = datetime.datetime.now()
+        from core.constants import is_trading_day, get_previous_trading_day, now_ist
 
-            # ── Skip weekends (Saturday=5, Sunday=6) ──
-            if now.weekday() in (5, 6):
-                # On weekends, just sleep and check again — never store 0s
+        logger.info("EOD Snapshot daemon started (using IST). Awaiting 15:25-15:35 trigger...")
+        snapshot_taken_date = None  # Sentinel to prevent double-fire
+
+        while True:
+            now = now_ist()  # Always use IST, even if VPS is in UTC
+            today_str = now.strftime("%Y-%m-%d")
+
+            # ── Skip non-trading days (weekends + NSE holidays) ──
+            if not is_trading_day(now):
                 time.sleep(60)
                 continue
 
-            if now.hour == 16 and now.minute == 0:
-                logger.info("Market closed. Storing live aggregated volumes as EOD for tomorrow...")
-                today_str = now.strftime("%Y-%m-%d")
+            # ── Already took snapshot today? ──
+            if snapshot_taken_date == today_str:
+                time.sleep(60)
+                continue
+
+            # ── Trigger window: 15:25 to 15:35 IST (near market close 15:30) ──
+            if now.hour == 15 and 25 <= now.minute <= 35:
+                logger.info("📸 Market close approaching. Taking EOD snapshot for Volume + OI...")
+
                 vols = vol_agg.get_detailed_volumes()
 
                 # ── Safety check: Only store if we have real (non-zero) data ──
-                total_volume = sum(
-                    v.get("call_volume", 0) + v.get("put_volume", 0)
-                    for v in vols.values()
-                ) if vols else 0
+                total_volume = 0
+                total_oi = 0
+                if vols:
+                    for v in vols.values():
+                        total_volume += v.get("call_volume", 0) + v.get("put_volume", 0)
+                        total_oi += v.get("call_oi", 0) + v.get("put_oi", 0)
 
-                if total_volume > 0 and db.is_connected:
+                has_data = (total_volume > 0 or total_oi > 0)
+
+                if has_data and db.is_connected:
                     db.store_eod_volumes(vols, date=today_str)
                     logger.info(
-                        "Successfully took snapshot of %d symbols into DB for %s (total volume: %d)",
-                        len(vols), today_str, total_volume,
-                    )
-                    db.delete_old_eod_volumes(keep_date=today_str)
-                    db.delete_old_alerts(keep_date=today_str)
-                    logger.info(
-                        "Cleaned up previous day EOD volumes and alerts. Only %s data remains.",
-                        today_str,
-                    )
-                else:
-                    logger.warning(
-                        "⚠️ Skipping EOD snapshot — total volume is 0 (no live data). "
-                        "Previous day data preserved."
+                        "✅ EOD snapshot stored: %d symbols for %s "
+                        "(total volume: %d, total OI: %d)",
+                        len(vols), today_str, total_volume, total_oi,
                     )
 
-                time.sleep(65)  # Skip past the 16:00 minute
+                    # Keep only today + previous trading day data
+                    prev_day = get_previous_trading_day(now)
+                    keep_dates = {today_str}
+                    if prev_day:
+                        keep_dates.add(prev_day.strftime("%Y-%m-%d"))
+
+                    try:
+                        result = db._eod_volumes.delete_many(
+                            {"date": {"$nin": list(keep_dates)}}
+                        )
+                        logger.info(
+                            "Cleaned up old EOD data: deleted %d records. "
+                            "Kept dates: %s",
+                            result.deleted_count, keep_dates,
+                        )
+                    except Exception as e:
+                        logger.error("Failed to clean old EOD data: %s", e)
+
+                    db.delete_old_alerts(keep_date=today_str)
+                    snapshot_taken_date = today_str
+                    logger.info("✅ EOD snapshot complete for %s.", today_str)
+                else:
+                    logger.warning(
+                        "⚠️ Skipping EOD snapshot — no live data found "
+                        "(volume=%d, OI=%d). Previous day data preserved.",
+                        total_volume, total_oi,
+                    )
+
+                # Sleep past the trigger window
+                time.sleep(660)  # Sleep 11 min to exit the 15:25-15:35 window
+
             time.sleep(20)
 
     threading.Thread(target=eod_snapshot_scheduler, daemon=True).start()
