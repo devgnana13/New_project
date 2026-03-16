@@ -25,6 +25,7 @@ import logging
 from datetime import datetime
 from typing import Optional
 from kiteconnect import KiteConnect
+from config import now_ist, today_ist
 
 logger = logging.getLogger(__name__)
 
@@ -66,7 +67,7 @@ class TokenManager:
         Returns:
             Access token string if found, None otherwise.
         """
-        today = datetime.now().strftime("%Y-%m-%d")
+        today = today_ist()
 
         # Return cached token only if it was cached for TODAY
         if self._access_token and self._cached_date == today:
@@ -141,12 +142,12 @@ class TokenManager:
             access_token = data["access_token"]
 
             # Store in MongoDB
-            today = datetime.now().strftime("%Y-%m-%d")
+            today = today_ist()
             token_doc = {
                 "api_key": self._api_key,
                 "access_token": access_token,
                 "date": today,
-                "created_at": datetime.utcnow(),
+                "created_at": now_ist(),
             }
 
             if self._collection is not None:
@@ -204,7 +205,7 @@ class TokenManager:
         if self._collection is None:
             return
 
-        today = datetime.now().strftime("%Y-%m-%d")
+        today = today_ist()
         try:
             result = self._collection.delete_many({"date": {"$ne": today}})
             if result.deleted_count > 0:

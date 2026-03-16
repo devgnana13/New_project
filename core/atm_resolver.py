@@ -71,6 +71,7 @@ from core.constants import (
     QUOTE_BATCH_SIZE,
 )
 from core.instrument_manager import InstrumentManager
+from config import now_ist
 
 logger = logging.getLogger(__name__)
 
@@ -105,7 +106,7 @@ class ATMResolution:
         self.token_list = [t["instrument_token"] for t in tokens]  # Just ints
         self.strikes = strikes                  # List of strike prices covered
         self.strike_range = strike_range
-        self.resolved_at = datetime.now()
+        self.resolved_at = now_ist()
 
     def to_dict(self) -> dict:
         """Serialize to JSON-friendly dict."""
@@ -492,7 +493,7 @@ class ATMResolver:
         self._errors.append({
             "symbol": symbol,
             "error": message,
-            "time": datetime.now().isoformat(),
+            "time": now_ist().isoformat(),
         })
         # Keep only the last 50 errors
         if len(self._errors) > 50:

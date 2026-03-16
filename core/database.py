@@ -68,6 +68,7 @@ from typing import Optional
 
 from pymongo import MongoClient, ASCENDING, DESCENDING
 from pymongo.errors import DuplicateKeyError, ConnectionFailure
+from config import now_ist, today_ist
 
 logger = logging.getLogger(__name__)
 
@@ -114,6 +115,7 @@ class DatabaseManager:
             self._client = client
             self._db = self._client[self._db_name]
             self._eod_volumes = self._db["eod_volumes"]
+            self._eod_oi = self._db["eod_oi"]
             self._alerts = self._db["alerts"]
             self._connected = True
             self._ensure_indexes()
@@ -142,6 +144,7 @@ class DatabaseManager:
 
             self._db = self._client[self._db_name]
             self._eod_volumes = self._db["eod_volumes"]
+            self._eod_oi = self._db["eod_oi"]
             self._alerts = self._db["alerts"]
             self._connected = True
 
@@ -172,6 +175,12 @@ class DatabaseManager:
         """Create unique compound indexes for efficient lookups."""
         if self._eod_volumes is not None:
             self._eod_volumes.create_index(
+                [("symbol", ASCENDING), ("date", ASCENDING)],
+                unique=True,
+                name="idx_symbol_date",
+            )
+        if hasattr(self, '_eod_oi') and self._eod_oi is not None:
+            self._eod_oi.create_index(
                 [("symbol", ASCENDING), ("date", ASCENDING)],
                 unique=True,
                 name="idx_symbol_date",
@@ -217,10 +226,10 @@ class DatabaseManager:
         self._ensure_connected()
 
         if date is None:
-            date = datetime.now().strftime("%Y-%m-%d")
+            date = today_ist()
 
         stored = 0
-        now = datetime.utcnow()
+        now = now_ist()
 
         for symbol, vol_data in volumes.items():
             doc = {
@@ -326,14 +335,14 @@ class DatabaseManager:
         self._ensure_connected()
 
         if date is None:
-            date = datetime.now().strftime("%Y-%m-%d")
+            date = today_ist()
 
         doc = {
             "symbol": symbol.upper(),
             "date": date,
             "call_volume_total": call_volume_total,
             "put_volume_total": put_volume_total,
-            "created_at": datetime.utcnow(),
+            "created_at": now_ist(),
         }
 
         try:
@@ -362,8 +371,7 @@ class DatabaseManager:
         """
         self._ensure_connected()
 
-        # Find the last trading day (skip weekends)
-        check_date = datetime.now() - timedelta(days=1)
+        check_date = now_ist() - timedelta(days=1)
         while check_date.weekday() in (5, 6):  # Sat=5, Sun=6
             check_date -= timedelta(days=1)
 
@@ -374,7 +382,7 @@ class DatabaseManager:
 
         # Fallback: search back up to 7 days for data (handles holidays)
         for days_back in range(2, 8):
-            fallback = datetime.now() - timedelta(days=days_back)
+            fallback = now_ist() - timedelta(days=days_back)
             if fallback.weekday() in (5, 6):
                 continue
             result = self.get_eod_volume(symbol, fallback.strftime("%Y-%m-%d"))
@@ -421,7 +429,7 @@ class DatabaseManager:
         """
         self._ensure_connected()
 
-        cutoff = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d")
+        cutoff = (now_ist() - timedelta(days=days)).strftime("%Y-%m-%d")
         cursor = self._eod_volumes.find(
             {"symbol": symbol.upper(), "date": {"$gte": cutoff}},
             {"_id": 0, "symbol": 1, "date": 1,
@@ -443,13 +451,97 @@ class DatabaseManager:
         self._ensure_connected()
 
         if date is None:
-            date = datetime.now().strftime("%Y-%m-%d")
+            date = today_ist()
 
         cursor = self._eod_volumes.find(
             {"date": date},
             {"_id": 0},
         ).sort("symbol", ASCENDING)
 
+        return list(cursor)
+
+    # ──────────────────────────────────────────────────────────
+    #  EOD OI — Write & Read
+    # ──────────────────────────────────────────────────────────
+
+    def store_eod_oi(
+        self,
+        oi_data: dict[str, dict],
+        date: str = None,
+    ) -> int:
+        self._ensure_connected()
+        if date is None:
+            date = today_ist()
+
+        stored = 0
+        now = now_ist()
+
+        for symbol, data in oi_data.items():
+            doc = {
+                "symbol": symbol.upper(),
+                "date": date,
+                "strikes": data.get("strikes", {}),
+                "created_at": now,
+            }
+            try:
+                self._eod_oi.update_one(
+                    {"symbol": doc["symbol"], "date": date},
+                    {"$set": doc},
+                    upsert=True,
+                )
+                stored += 1
+            except Exception as e:
+                logger.error("Failed to store EOD OI for %s: %s", symbol, e)
+
+        return stored
+
+    def delete_old_eod_oi(self, keep_date: str) -> int:
+        self._ensure_connected()
+        try:
+            result = self._eod_oi.delete_many(
+                {"date": {"$ne": keep_date}}
+            )
+            return result.deleted_count
+        except Exception as e:
+            logger.error("Failed to delete old EOD OI: %s", e)
+            return 0
+
+    def get_eod_oi(self, symbol: str, date: str) -> Optional[dict]:
+        self._ensure_connected()
+        doc = self._eod_oi.find_one(
+            {"symbol": symbol.upper(), "date": date},
+            {"_id": 0, "symbol": 1, "date": 1, "strikes": 1},
+        )
+        return doc
+        
+    def get_yesterday_oi(self, symbol: str) -> Optional[dict]:
+        self._ensure_connected()
+        check_date = now_ist() - timedelta(days=1)
+        while check_date.weekday() in (5, 6):
+            check_date -= timedelta(days=1)
+
+        result = self.get_eod_oi(symbol, check_date.strftime("%Y-%m-%d"))
+        if result:
+            return result
+
+        for days_back in range(2, 8):
+            fallback = now_ist() - timedelta(days=days_back)
+            if fallback.weekday() in (5, 6):
+                continue
+            result = self.get_eod_oi(symbol, fallback.strftime("%Y-%m-%d"))
+            if result:
+                return result
+
+        return None
+
+    def get_all_eod_ois(self, date: str = None) -> list[dict]:
+        self._ensure_connected()
+        if date is None:
+            date = today_ist()
+        cursor = self._eod_oi.find(
+            {"date": date},
+            {"_id": 0},
+        ).sort("symbol", ASCENDING)
         return list(cursor)
 
     # ──────────────────────────────────────────────────────────
@@ -483,7 +575,7 @@ class DatabaseManager:
         self._ensure_connected()
 
         if date is None:
-            date = datetime.now().strftime("%Y-%m-%d")
+            date = today_ist()
 
         doc = {
             "symbol": symbol.upper(),
@@ -491,7 +583,7 @@ class DatabaseManager:
             "alert_type": alert_type,
             "message": message,
             "data": data or {},
-            "created_at": datetime.utcnow(),
+            "created_at": now_ist(),
         }
 
         try:

@@ -6,9 +6,33 @@ environment variables. Never commit real credentials to source control.
 """
 
 import os
+from datetime import datetime, timezone, timedelta
 from dotenv import load_dotenv
 
 load_dotenv()
+
+# ──────────────────────────────────────────────────────────────
+#  IST TIMEZONE — All market operations must use IST
+#  (VPS servers typically run in UTC; datetime.now() would
+#   return UTC which breaks market-hour checks, EOD snapshots,
+#   and date-based MongoDB lookups)
+# ──────────────────────────────────────────────────────────────
+
+IST = timezone(timedelta(hours=5, minutes=30))
+
+
+def now_ist() -> datetime:
+    """Return the current datetime in IST (Indian Standard Time).
+
+    ALWAYS use this instead of datetime.now() for any market-related
+    time checks (EOD snapshots, trading day calculations, token dates, etc.).
+    """
+    return datetime.now(IST)
+
+
+def today_ist() -> str:
+    """Return today's date string 'YYYY-MM-DD' in IST."""
+    return now_ist().strftime("%Y-%m-%d")
 
 # ──────────────────────────────────────────────────────────────
 #  KITE CONNECT API CREDENTIALS (up to 3 API keys for workers)

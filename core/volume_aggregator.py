@@ -58,6 +58,7 @@ from datetime import datetime
 from typing import Optional, Callable
 
 from core.aggregator import TickAggregator
+from config import now_ist
 
 logger = logging.getLogger(__name__)
 
@@ -453,7 +454,7 @@ class VolumeAggregator:
         ticks = self._tick_agg.get_ticks(all_tokens)
 
         # Compute volumes per symbol
-        now = datetime.now()
+        now = now_ist()
 
         with self._lock:
             for symbol, token_groups in symbol_tokens.items():

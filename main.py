@@ -8,7 +8,7 @@ import threading
 from core.database import DatabaseManager
 from core.token_manager import TokenManager
 from api.app import create_app
-from config import KITE_CREDENTIALS, FLASK_PORT
+from config import KITE_CREDENTIALS, FLASK_PORT, now_ist, today_ist
 
 # ──────────────────────────────────────────────────────────────
 #  LOGGING
@@ -86,6 +86,7 @@ def start_full_platform(access_token, db, token_manager):
     from core.instrument_manager import InstrumentManager
     from core.atm_resolver import ATMResolver
     from core.volume_aggregator import VolumeAggregator
+    from core.oi_aggregator import OIAggregator
     from core.alert_engine import AlertEngine
     from workers.supervisor import WorkerSupervisor
 
@@ -124,15 +125,18 @@ def start_full_platform(access_token, db, token_manager):
     vol_agg.build_token_map(resolver.resolve_all())
     vol_agg.start()
 
+    oi_agg = OIAggregator(tick_agg, db)
+    oi_agg.build_token_map(resolver.resolve_all())
+    oi_agg.start()
+
     alert_engine = AlertEngine(vol_agg, db)
     alert_engine.start()
 
-    # Background thread to snapshot EOD volumes daily at 4:00 PM
+    # Background thread to snapshot EOD volumes daily at 5:00 PM IST
     def eod_snapshot_scheduler():
-        import datetime
-        logger.info("EOD Snapshot daemon started. Awaiting 16:00 (4:00 PM) trigger...")
+        logger.info("EOD Snapshot daemon started. Awaiting 17:00 IST (5:00 PM) trigger...")
         while True:
-            now = datetime.datetime.now()
+            now = now_ist()  # ← Use IST, NOT system time (UTC on VPS)
 
             # ── Skip weekends (Saturday=5, Sunday=6) ──
             if now.weekday() in (5, 6):
@@ -140,10 +144,11 @@ def start_full_platform(access_token, db, token_manager):
                 time.sleep(60)
                 continue
 
-            if now.hour == 16 and now.minute == 0:
-                logger.info("Market closed. Storing live aggregated volumes as EOD for tomorrow...")
+            if now.hour == 17 and now.minute == 0:
+                logger.info("Market closed (IST). Storing live aggregated volumes and OI as EOD...")
                 today_str = now.strftime("%Y-%m-%d")
                 vols = vol_agg.get_volumes()
+                oi_data = oi_agg.get_oi_data()
 
                 # ── Safety check: Only store if we have real (non-zero) data ──
                 total_volume = sum(
@@ -153,14 +158,16 @@ def start_full_platform(access_token, db, token_manager):
 
                 if total_volume > 0 and db.is_connected:
                     db.store_eod_volumes(vols, date=today_str)
+                    db.store_eod_oi(oi_data, date=today_str)
                     logger.info(
                         "Successfully took snapshot of %d symbols into DB for %s (total volume: %d)",
                         len(vols), today_str, total_volume,
                     )
                     db.delete_old_eod_volumes(keep_date=today_str)
+                    db.delete_old_eod_oi(keep_date=today_str)
                     db.delete_old_alerts(keep_date=today_str)
                     logger.info(
-                        "Cleaned up previous day EOD volumes and alerts. Only %s data remains.",
+                        "Cleaned up previous day EOD volumes, OI, and alerts. Only %s data remains.",
                         today_str,
                     )
                 else:
@@ -169,7 +176,7 @@ def start_full_platform(access_token, db, token_manager):
                         "Previous day data preserved."
                     )
 
-                time.sleep(65)  # Skip past the 16:00 minute
+                time.sleep(65)  # Skip past the 17:00 minute
             time.sleep(20)
 
     threading.Thread(target=eod_snapshot_scheduler, daemon=True).start()
@@ -183,6 +190,7 @@ def start_full_platform(access_token, db, token_manager):
         tick_aggregator=tick_agg,
         supervisor=supervisor,
         token_manager=token_manager,
+        oi_aggregator=oi_agg,
     )
 
     try:
@@ -193,6 +201,7 @@ def start_full_platform(access_token, db, token_manager):
         supervisor.stop()
         alert_engine.stop()
         vol_agg.stop()
+        oi_agg.stop()
         tick_agg.stop()
         logger.info("Shutdown complete.")
 

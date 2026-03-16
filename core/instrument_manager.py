@@ -37,6 +37,7 @@ from collections import defaultdict
 from typing import Optional
 
 from kiteconnect import KiteConnect
+from config import now_ist, today_ist
 
 from core.constants import (
     STOCK_SYMBOLS,
@@ -136,7 +137,7 @@ class InstrumentManager:
         self._build_indexes()
 
         self._loaded = True
-        self._load_timestamp = datetime.now()
+        self._load_timestamp = now_ist()
         self._instrument_count = len(self._instruments)
 
         logger.info(
@@ -201,7 +202,7 @@ class InstrumentManager:
         if not expiries:
             return None
 
-        today = datetime.now().strftime("%Y-%m-%d")
+        today = today_ist()
         # Find the first expiry that hasn't passed yet
         for exp in expiries:
             if exp >= today:

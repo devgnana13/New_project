@@ -55,6 +55,7 @@ from functools import wraps
 
 from flask import Flask, jsonify, request, send_from_directory, redirect
 from flask_cors import CORS
+from config import now_ist, today_ist
 
 logger = logging.getLogger(__name__)
 
@@ -66,6 +67,7 @@ def create_app(
     tick_aggregator=None,
     supervisor=None,
     token_manager=None,
+    oi_aggregator=None,
 ):
     """
     Application factory — creates and configures the Flask app.
@@ -90,6 +92,7 @@ def create_app(
     app.config["tick_aggregator"] = tick_aggregator
     app.config["supervisor"] = supervisor
     app.config["token_manager"] = token_manager
+    app.config["oi_aggregator"] = oi_aggregator
 
     # ──────────────────────────────────────────────────────────
     #  MIDDLEWARE — Response timing
@@ -104,7 +107,7 @@ def create_app(
         if hasattr(request, "_start_time"):
             elapsed = (time.time() - request._start_time) * 1000
             response.headers["X-Response-Time"] = f"{elapsed:.1f}ms"
-        response.headers["X-Timestamp"] = datetime.now().isoformat()
+        response.headers["X-Timestamp"] = now_ist().isoformat()
         return response
 
     # ──────────────────────────────────────────────────────────
@@ -122,6 +125,12 @@ def create_app(
                 return redirect("/setup")
         dashboard_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "dashboard")
         return send_from_directory(dashboard_dir, "index.html")
+
+    @app.route("/oi")
+    def serve_oi_dashboard():
+        """Serve the new OI analysis page."""
+        dashboard_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "dashboard")
+        return send_from_directory(dashboard_dir, "oi_analysis.html")
 
     @app.route("/setup")
     def serve_token_setup():
@@ -156,7 +165,7 @@ def create_app(
         last_info = tm.get_last_token_info()
         return jsonify({
             "has_valid_token": today_token is not None,
-            "date": datetime.now().strftime("%Y-%m-%d"),
+            "date": today_ist(),
             "login_url": tm.get_login_url(),
             "last_token_date": last_info.get("date") if last_info else None,
             "last_token_created_at": last_info.get("created_at") if last_info else None,
@@ -255,7 +264,7 @@ def create_app(
                 from datetime import timedelta
                 # Search backwards for the last day with actual data
                 for days_back in range(1, 8):
-                    check_date = datetime.now() - timedelta(days=days_back)
+                    check_date = now_ist() - timedelta(days=days_back)
                     if check_date.weekday() in (5, 6):
                         continue
                     date_str = check_date.strftime("%Y-%m-%d")
@@ -275,7 +284,7 @@ def create_app(
 
         return jsonify({
             "status": "ok",
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": now_ist().isoformat(),
             "market_closed": market_closed,
             "data_source": data_source,
             "data_date": data_date,
@@ -315,7 +324,7 @@ def create_app(
         return jsonify({
             "status": "ok",
             "symbol": symbol.upper(),
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": now_ist().isoformat(),
             "data": vol,
         })
 
@@ -360,9 +369,34 @@ def create_app(
 
         return jsonify({
             "status": "ok",
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": now_ist().isoformat(),
             "count": len(detailed),
             "data": detailed,
+        })
+
+    # ──────────────────────────────────────────────────────────
+    #  ENDPOINT: /api/live-oi
+    # ──────────────────────────────────────────────────────────
+
+    @app.route("/api/live-oi", methods=["GET"])
+    def get_live_oi():
+        """
+        Return live OI and prev_day OI.
+        """
+        oi_agg = app.config.get("oi_aggregator")
+        if oi_agg is None:
+            return jsonify({
+                "status": "error",
+                "message": "OI aggregator not initialized",
+            }), 503
+
+        oi_data = oi_agg.get_oi_data()
+        
+        return jsonify({
+            "status": "ok",
+            "timestamp": now_ist().isoformat(),
+            "count": len(oi_data),
+            "data": oi_data,
         })
 
     # ──────────────────────────────────────────────────────────
@@ -400,7 +434,7 @@ def create_app(
         if db is not None:
             symbol = request.args.get("symbol")
             alert_type = request.args.get("type")
-            today = datetime.now().strftime("%Y-%m-%d")
+            today = today_ist()
 
             alerts = db.get_alerts(
                 symbol=symbol,
@@ -420,7 +454,7 @@ def create_app(
             fired = alert_eng.get_fired_alerts()
             return jsonify({
                 "status": "ok",
-                "date": datetime.now().strftime("%Y-%m-%d"),
+                "date": today_ist(),
                 "count": len(fired),
                 "data": fired,
             })
@@ -498,7 +532,7 @@ def create_app(
         # Default to last trading day (skip weekends)
         if not date:
             from datetime import timedelta
-            check_date = datetime.now() - timedelta(days=1)
+            check_date = now_ist() - timedelta(days=1)
             # Skip backwards over weekends
             while check_date.weekday() in (5, 6):  # Sat=5, Sun=6
                 check_date -= timedelta(days=1)
@@ -514,7 +548,7 @@ def create_app(
         if not data and not request.args.get("date"):
             from datetime import timedelta
             for days_back in range(2, 8):
-                fallback_date = datetime.now() - timedelta(days=days_back)
+                fallback_date = now_ist() - timedelta(days=days_back)
                 if fallback_date.weekday() in (5, 6):
                     continue
                 fallback_str = fallback_date.strftime("%Y-%m-%d")
@@ -576,7 +610,7 @@ def create_app(
 
         return jsonify({
             "status": "ok",
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": now_ist().isoformat(),
             "components": components,
         })
 

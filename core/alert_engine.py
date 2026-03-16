@@ -67,6 +67,7 @@ from typing import Optional, Callable
 
 from core.volume_aggregator import VolumeAggregator
 from core.database import DatabaseManager
+from config import now_ist, today_ist
 
 logger = logging.getLogger(__name__)
 
@@ -196,7 +197,7 @@ class AlertEngine:
         Returns:
             List of (symbol, alert_type) pairs fired today.
         """
-        today = datetime.now().strftime("%Y-%m-%d")
+        today = today_ist()
         return [
             {"symbol": sym, "alert_type": atype}
             for (sym, atype), date in self._fired_today.items()
@@ -218,7 +219,7 @@ class AlertEngine:
     def get_stats(self) -> dict:
         """Return engine statistics."""
         uptime = time.time() - self._started_at if self._started_at else 0
-        today = datetime.now().strftime("%Y-%m-%d")
+        today = today_ist()
         alerts_today = sum(
             1 for d in self._fired_today.values() if d == today
         )
@@ -261,7 +262,7 @@ class AlertEngine:
             3. Compare each symbol: live >= multiplier × yesterday
             4. Fire alerts for new spikes (dedup per day)
         """
-        today = datetime.now().strftime("%Y-%m-%d")
+        today = today_ist()
         self._total_checks += 1
         self._last_check_time = time.time()
 
@@ -353,7 +354,7 @@ class AlertEngine:
 
         # ── Fire alert! ──
         multiplier = round(live_volume / yesterday_volume, 2)
-        timestamp = datetime.now()
+        timestamp = now_ist()
 
         alert = {
             "symbol": symbol,
@@ -409,7 +410,7 @@ class AlertEngine:
 
         Fetches from MongoDB once per day and caches in memory.
         """
-        today = datetime.now().strftime("%Y-%m-%d")
+        today = today_ist()
 
         # Return cached if already loaded today
         if self._yesterday_cache_date == today and self._yesterday_cache:
