@@ -91,7 +91,7 @@ STRIKE_RANGE = 10                  # ATM ± 10 strikes
 #  WEBSOCKET CONFIGURATION
 # ──────────────────────────────────────────────────────────────
 
-MAX_INSTRUMENTS_PER_WORKER = 3000
+MAX_INSTRUMENTS_PER_WORKER = 2000
 WORKER_COUNT = 3
 
 

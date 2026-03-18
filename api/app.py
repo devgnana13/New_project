@@ -257,30 +257,10 @@ def create_app(
         data_source = "live"
         data_date = None
 
-        # If no live data, fall back to last trading day's EOD
-        if market_closed and volumes:
-            db = app.config.get("database")
-            if db:
-                from datetime import timedelta
-                # Search backwards for the last day with actual data
-                for days_back in range(1, 8):
-                    check_date = now_ist() - timedelta(days=days_back)
-                    if check_date.weekday() in (5, 6):
-                        continue
-                    date_str = check_date.strftime("%Y-%m-%d")
-                    eod_data = db.get_all_eod_volumes(date=date_str)
-                    if eod_data:
-                        # Convert EOD format to live volume format
-                        for item in eod_data:
-                            symbol = item.get("symbol", "")
-                            if symbol in volumes:
-                                volumes[symbol] = {
-                                    "call_volume": item.get("call_volume_total", 0),
-                                    "put_volume": item.get("put_volume_total", 0),
-                                }
-                        data_source = f"eod_{date_str}"
-                        data_date = date_str
-                        break
+        # If no live data is found (e.g. before market opens, disconnected, or no ticks yet),
+        # we still return the actual (empty/zero) live aggregator values.
+        # We previously used to overwrite `volumes` with EOD data here,
+        # but that misled frontend clients to show 'Prev Day' values as 'Live' values.
 
         return jsonify({
             "status": "ok",

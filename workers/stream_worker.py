@@ -259,18 +259,29 @@ class StreamWorker:
             "Connected! Subscribing to %d tokens...", len(self._tokens),
         )
 
-        # Subscribe in chunks (KiteTicker has a per-message limit)
-        chunk_size = 500
-        for i in range(0, len(self._tokens), chunk_size):
+        # Subscribe in small staggered chunks to avoid Kite rate limits.
+        # Kite drops WebSocket connections (error 1006) if we blast
+        # thousands of subscriptions at once.
+        chunk_size = 200
+        total_chunks = (len(self._tokens) + chunk_size - 1) // chunk_size
+        mode_flag = (
+            ws.MODE_FULL if self._mode == "full"
+            else ws.MODE_QUOTE if self._mode == "quote"
+            else ws.MODE_LTP
+        )
+
+        for idx, i in enumerate(range(0, len(self._tokens), chunk_size)):
             chunk = self._tokens[i:i + chunk_size]
             ws.subscribe(chunk)
-            ws.set_mode(ws.MODE_FULL if self._mode == "full"
-                       else ws.MODE_QUOTE if self._mode == "quote"
-                       else ws.MODE_LTP, chunk)
+            ws.set_mode(mode_flag, chunk)
+
+            # Stagger: wait between chunks (except after the last one)
+            if idx < total_chunks - 1:
+                time.sleep(0.5)
 
         logger.info(
-            "Subscribed to %d tokens in %s mode.",
-            len(self._tokens), self._mode,
+            "Subscribed to %d tokens in %s mode (%d chunks, staggered).",
+            len(self._tokens), self._mode, total_chunks,
         )
 
     def _on_ticks(self, ws, ticks: list[dict]) -> None:

@@ -160,10 +160,12 @@ class OIAggregator:
                             val = tick.oi
                             if opt_type == "CE":
                                 soi.strikes[strike_str]["ce_oi"] = val
-                                soi.strikes[strike_str]["ce_chng"] = val - soi.strikes[strike_str]["ce_prev"]
+                                if soi.strikes[strike_str]["ce_prev"] > 0:
+                                    soi.strikes[strike_str]["ce_chng"] = val - soi.strikes[strike_str]["ce_prev"]
                             else:
                                 soi.strikes[strike_str]["pe_oi"] = val
-                                soi.strikes[strike_str]["pe_chng"] = val - soi.strikes[strike_str]["pe_prev"]
+                                if soi.strikes[strike_str]["pe_prev"] > 0:
+                                    soi.strikes[strike_str]["pe_chng"] = val - soi.strikes[strike_str]["pe_prev"]
 
                 soi.updated_at = now
 
